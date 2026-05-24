@@ -8,7 +8,12 @@ import {
   Filter, 
   Search,
   RefreshCw,
-  Eye
+  Eye,
+  Clock,
+  Ticket,
+  Calendar,
+  Hash,
+  User
 } from 'lucide-react';
 
 export default function Dashboard() {
@@ -29,23 +34,19 @@ export default function Dashboard() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
-  // Lock agent filter if current user is an Agent
   const isAgentRole = currentUser?.role === 'Agent';
   const effectiveAgent = isAgentRole ? currentUser.name : selectedAgent;
 
-  // Extract unique agents for filtering dropdown
   const uniqueAgents = useMemo(() => {
     const list = findings.map(f => f.agentName);
     return ['All', ...new Set(list)];
   }, [findings]);
 
-  // Extract unique years for filtering dropdown
   const uniqueYears = useMemo(() => {
     const list = findings.map(f => new Date(f.date).getFullYear().toString());
     return ['All', ...new Set(list)].sort();
   }, [findings]);
 
-  // Months array for filtering
   const months = [
     { value: 'All', label: 'Semua Bulan' },
     { value: '0', label: 'Januari' },
@@ -62,7 +63,6 @@ export default function Dashboard() {
     { value: '11', label: 'Desember' }
   ];
 
-  // Reset Filters
   const handleResetFilters = () => {
     setSelectedAgent('All');
     setStartDate('');
@@ -72,7 +72,6 @@ export default function Dashboard() {
     setSearchQuery('');
   };
 
-  // Filtered Findings
   const filteredFindings = useMemo(() => {
     return findings.filter((audit) => {
       if (isAgentRole) {
@@ -91,16 +90,16 @@ export default function Dashboard() {
         const matchNotes = audit.notes?.toLowerCase().includes(query);
         const matchAuditor = audit.auditorName?.toLowerCase().includes(query);
         const matchAgent = audit.agentName?.toLowerCase().includes(query);
-        if (!matchId && !matchNotes && !matchAuditor && !matchAgent) return false;
+        const matchMsisdn = audit.msisdn?.toLowerCase().includes(query);
+        if (!matchId && !matchNotes && !matchAuditor && !matchAgent && !matchMsisdn) return false;
       }
       return true;
     });
   }, [findings, selectedAgent, startDate, endDate, selectedMonth, selectedYear, searchQuery, currentUser, isAgentRole]);
 
-  // Statistics KPI calculations
   const stats = useMemo(() => {
     const total = filteredFindings.length;
-    if (total === 0) return { avgScore: 0, totalAudits: 0, fatalRate: 0, topAgent: '-' };
+    if (total === 0) return { avgScore: 0, totalAudits: 0, topAgent: '-' };
     const sumScore = filteredFindings.reduce((acc, f) => acc + f.score, 0);
     const avgScore = Math.round(sumScore / total);
     const agentScores = {};
@@ -123,7 +122,6 @@ export default function Dashboard() {
     return { avgScore, totalAudits: total, topAgent: topAgentName };
   }, [filteredFindings]);
 
-  // Detailed Selected Audit for Modal
   const selectedAudit = useMemo(() => {
     if (!selectedAuditId) return null;
     return findings.find(f => f.id === selectedAuditId);
@@ -292,7 +290,7 @@ export default function Dashboard() {
             <span style={styles.kpiValue}>{stats.totalAudits}</span>
           </div>
         </div>
-        <div className="glass-card" style={styles.kpiCard}>
+        <div className="glass-card" style={stats.topAgent === '-' ? { display: 'none' } : styles.kpiCard}>
           <div style={styles.kpiHeader}>
             <span style={styles.kpiTitle}>Top Agent</span>
             <div style={{ ...styles.kpiIcon, background: 'rgba(16, 185, 129, 0.1)' }}>
@@ -394,11 +392,22 @@ export default function Dashboard() {
             </div>
             
             <div style={styles.modalScroll}>
-              <div style={styles.modalMeta}>
-                <p><strong>Agent:</strong> {selectedAudit.agentName}</p>
-                <p><strong>Auditor:</strong> {selectedAudit.auditorName}</p>
-                <p><strong>Tanggal:</strong> {selectedAudit.date}</p>
-                <p><strong>Skor Akhir:</strong> <span style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--primary)' }}>{selectedAudit.score}%</span></p>
+              <div style={styles.modalGrid2Col}>
+                <div style={styles.modalMeta}>
+                  <h4 style={styles.modalSubTitle}>Informasi Audit</h4>
+                  <p><User size={12} /> <strong>Agent:</strong> {selectedAudit.agentName}</p>
+                  <p><FileText size={12} /> <strong>Auditor:</strong> {selectedAudit.auditorName}</p>
+                  <p><Calendar size={12} /> <strong>Tgl Audit:</strong> {selectedAudit.date}</p>
+                  <p><Award size={12} /> <strong>Skor:</strong> <span style={{ fontWeight: 'bold', color: 'var(--primary)' }}>{selectedAudit.score}%</span></p>
+                </div>
+                
+                <div style={styles.modalMeta}>
+                  <h4 style={styles.modalSubTitle}>Detail Call</h4>
+                  <p><Hash size={12} /> <strong>MSISDN:</strong> {selectedAudit.msisdn || '-'}</p>
+                  <p><Ticket size={12} /> <strong>No Tiket:</strong> {selectedAudit.noTiket || '-'}</p>
+                  <p><FileText size={12} /> <strong>No CWC:</strong> {selectedAudit.noCWC || '-'}</p>
+                  <p><Clock size={12} /> <strong>Call:</strong> {selectedAudit.callDate || '-'} {selectedAudit.callTime || ''} ({selectedAudit.duration || '-'})</p>
+                </div>
               </div>
 
               {QM_CATEGORIES.map(cat => (
@@ -413,8 +422,8 @@ export default function Dashboard() {
                           <div style={styles.modalParamHeader}>
                             <span style={{ fontSize: '13px', fontWeight: '600' }}>{p.id}. {p.name}</span>
                             {isPassed ? 
-                              <span style={{ color: 'var(--success)', fontSize: '12px', fontWeight: 'bold' }}>PASS (+{p.weight}%)</span> : 
-                              <span style={{ color: 'var(--danger)', fontSize: '12px', fontWeight: 'bold' }}>FAIL (0%)</span>
+                              <span style={{ color: 'var(--success)', fontSize: '12px', fontWeight: 'bold' }}>PASS</span> : 
+                              <span style={{ color: 'var(--danger)', fontSize: '12px', fontWeight: 'bold' }}>FAIL</span>
                             }
                           </div>
                           {!isPassed && failedIndices.length > 0 && (
@@ -473,12 +482,14 @@ const styles = {
   td: { padding: '12px', fontSize: '13px', borderBottom: '1px solid var(--border-light)' },
   actionBtn: { padding: '4px 8px', fontSize: '11px', background: 'rgba(255,255,255,0.1)', border: '1px solid var(--border-light)', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '4px' },
   modalOverlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(5px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
-  modalCard: { width: '90%', maxWidth: '700px', maxHeight: '90vh', padding: '24px', display: 'flex', flexDirection: 'column' },
+  modalCard: { width: '90%', maxWidth: '750px', maxHeight: '90vh', padding: '24px', display: 'flex', flexDirection: 'column' },
   modalHeader: { display: 'flex', justifyContent: 'space-between', marginBottom: '20px' },
   modalTitle: { fontSize: '18px', fontWeight: '700' },
   modalCloseBtn: { background: 'none', border: 'none', color: '#fff', fontSize: '24px', cursor: 'pointer' },
   modalScroll: { overflowY: 'auto', flex: 1, paddingRight: '10px' },
-  modalMeta: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '20px', padding: '16px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px' },
+  modalGrid2Col: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' },
+  modalMeta: { padding: '16px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '6px' },
+  modalSubTitle: { fontSize: '12px', fontWeight: '700', color: 'var(--primary)', marginBottom: '4px', textTransform: 'uppercase' },
   modalCategory: { marginBottom: '20px' },
   modalCatTitle: { fontSize: '14px', fontWeight: '700', color: 'var(--primary)', marginBottom: '10px', borderBottom: '1px solid var(--border-light)', paddingBottom: '4px' },
   modalParams: { display: 'flex', flexDirection: 'column', gap: '12px' },

@@ -23,7 +23,13 @@ const INITIAL_FINDINGS = [
     isFatal: false,
     notes: 'Performa sangat baik, hanya sedikit kurang di penutup.',
     paramScores: { 1: 1, 2: 0, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 1, 10: 1, 11: 1, 12: 1 },
-    failedSubParams: { 2: [0] }
+    failedSubParams: { 2: [0] },
+    msisdn: '08123456789',
+    noTiket: 'IN123456',
+    noCWC: 'CWC-999',
+    duration: '05:20',
+    callDate: '2026-05-24',
+    callTime: '10:30'
   }
 ];
 
@@ -87,11 +93,8 @@ export const AppContextProvider = ({ children }) => {
 
   const addFinding = (findingData) => {
     const nextId = "AUD-" + (1000 + findings.length + 1);
-    
-    // Calculate Score based on parameters
     let totalScore = 0;
     const allParams = QM_CATEGORIES.flatMap(cat => cat.parameters);
-    
     allParams.forEach(param => {
       if (findingData.paramScores[param.id] === 1) {
         totalScore += param.weight;
@@ -100,14 +103,9 @@ export const AppContextProvider = ({ children }) => {
 
     const newFinding = {
       id: nextId,
-      date: findingData.date,
-      agentName: findingData.agentName,
+      ...findingData,
       auditorName: currentUser ? currentUser.name : 'System Auditor',
       score: totalScore,
-      isFatal: totalScore < 100 && findingData.isFatal,
-      notes: findingData.notes,
-      paramScores: findingData.paramScores,
-      failedSubParams: findingData.failedSubParams
     };
 
     setFindings((prev) => [newFinding, ...prev]);
