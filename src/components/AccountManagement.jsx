@@ -1,6 +1,6 @@
 import { useState, useContext } from 'react';
 import { AppContext } from '../context/AppContext';
-import { UserPlus, Trash2, Shield } from 'lucide-react';
+import { UserPlus, Trash2, Shield, UserCog, User } from 'lucide-react';
 
 export default function AccountManagement() {
   const { users, signup, deleteUser, currentUser } = useContext(AppContext);
@@ -21,45 +21,114 @@ export default function AccountManagement() {
 
   const handleDelete = async (id, username) => {
     if (username === currentUser.username) { alert('Anda tidak bisa menghapus akun sendiri!'); return; }
-    if (window.confirm(`Hapus akun ${username}?`)) await deleteUser(id);
+    if (window.confirm(`Hapus akun @${username}?`)) await deleteUser(id);
   };
 
   return (
     <div className="main-content">
       <div style={styles.header}>
-        <h2 style={styles.title}>Accounts</h2>
-        <p style={styles.subtitle}>Kelola akses pengguna aplikasi.</p>
+        <h2 style={styles.title}>Account Management</h2>
+        <p style={styles.subtitle}>Kelola akses pengguna dan privilege sistem CallMon2.0</p>
       </div>
 
       <div className="account-layout" style={styles.layout}>
+        {/* Form Section */}
         <div className="glass-card" style={styles.formCard}>
-          <div style={styles.cardHeader}><UserPlus size={16} /><span>Tambah Akun</span></div>
+          <div style={styles.cardHeader}>
+            <UserPlus size={18} color="var(--primary)" />
+            <h3 style={styles.cardTitle}>Tambah Akun Baru</h3>
+          </div>
+          
           <form onSubmit={handleSubmit}>
-            <div className="form-group"><label className="form-label">Nama</label><input type="text" name="name" className="form-input" value={formData.name} onChange={handleChange} required /></div>
-            <div className="form-group"><label className="form-label">Username</label><input type="text" name="username" className="form-input" value={formData.username} onChange={handleChange} required /></div>
-            <div className="form-group"><label className="form-label">Password</label><input type="password" name="password" className="form-input" value={formData.password} onChange={handleChange} required /></div>
             <div className="form-group">
-              <label className="form-label">Role</label>
+              <label className="form-label">Nama Lengkap</label>
+              <input type="text" name="name" className="form-input" value={formData.name} onChange={handleChange} placeholder="Nama Lengkap" required />
+            </div>
+            
+            <div style={styles.grid2}>
+              <div className="form-group">
+                <label className="form-label">Username</label>
+                <input type="text" name="username" className="form-input" value={formData.username} onChange={handleChange} placeholder="username" required />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Password</label>
+                <input type="password" name="password" className="form-input" value={formData.password} onChange={handleChange} placeholder="******" required />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Role Privilege</label>
               <select name="role" className="form-input" value={formData.role} onChange={handleChange}>
-                <option value="Agent">Agent</option><option value="TL">TL</option><option value="QC">QC</option><option value="superadmin">Superadmin</option>
+                <option value="Agent">Agent</option>
+                <option value="TL">Team Leader (TL)</option>
+                <option value="QC">Quality Control (QC)</option>
+                <option value="superadmin">Superadmin</option>
               </select>
             </div>
-            <button type="submit" className="btn-primary" style={{ width: '100%', marginTop: '10px' }}>Buat Akun</button>
-            {status.message && <p style={{ color: status.type === 'success' ? 'var(--success)' : 'var(--danger)', fontSize: '13px', marginTop: '10px' }}>{status.message}</p>}
+
+            <button type="submit" className="btn-primary" style={styles.submitBtn}>
+              <UserCog size={16} /> Buat Akun Baru
+            </button>
+            
+            {status.message && (
+              <div style={{ 
+                marginTop: '16px', 
+                padding: '10px', 
+                borderRadius: '8px', 
+                fontSize: '13px',
+                textAlign: 'center',
+                background: status.type === 'success' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                color: status.type === 'success' ? 'var(--success)' : 'var(--danger)',
+                border: `1px solid ${status.type === 'success' ? 'var(--success)' : 'var(--danger)'}33`
+              }}>
+                {status.message}
+              </div>
+            )}
           </form>
         </div>
 
+        {/* List Section */}
         <div className="glass-card" style={styles.listCard}>
-          <div style={styles.cardHeader}><Shield size={16} /><span>Daftar Akun</span></div>
+          <div style={styles.cardHeader}>
+            <Shield size={18} color="var(--primary)" />
+            <h3 style={styles.cardTitle}>Daftar Akun Terdaftar</h3>
+          </div>
+          
           <div className="table-container">
-            <table>
-              <thead><tr><th>Nama</th><th>Role</th><th></th></tr></thead>
+            <table style={styles.table}>
+              <thead>
+                <tr>
+                  <th>User Info</th>
+                  <th>Privilege</th>
+                  <th style={{ textAlign: 'right' }}>Aksi</th>
+                </tr>
+              </thead>
               <tbody>
                 {users.map(u => (
-                  <tr key={u._id}>
-                    <td><div style={{ fontWeight: '600' }}>{u.name}</div><div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>@{u.username}</div></td>
-                    <td><span className={`badge badge-${u.role === 'superadmin' ? 'primary' : 'success'}`} style={{ fontSize: '10px' }}>{u.role}</span></td>
-                    <td><button onClick={() => handleDelete(u._id, u.username)} style={styles.delBtn}><Trash2 size={14} /></button></td>
+                  <tr key={u._id} style={styles.tr}>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div style={styles.avatarMini}><User size={14} /></div>
+                        <div>
+                          <div style={{ fontWeight: '700', fontSize: '14px' }}>{u.name}</div>
+                          <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>@{u.username}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <span className={`badge badge-${u.role === 'superadmin' ? 'primary' : (u.role === 'QC' ? 'success' : (u.role === 'TL' ? 'warning' : 'primary'))}`} style={{ fontSize: '10px' }}>
+                        {u.role}
+                      </span>
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      <button 
+                        onClick={() => handleDelete(u._id, u.username)} 
+                        style={styles.delBtn}
+                        title="Hapus Akun"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -72,12 +141,18 @@ export default function AccountManagement() {
 }
 
 const styles = {
-  header: { marginBottom: '24px' },
-  title: { fontSize: '24px', fontWeight: '800' },
-  subtitle: { fontSize: '13px', color: 'var(--text-muted)' },
-  layout: { display: 'flex', gap: '20px', flexWrap: 'wrap' },
-  formCard: { flex: '0.7', minWidth: '280px' },
-  listCard: { flex: '1.3', minWidth: '320px' },
-  cardHeader: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px', fontWeight: '700', fontSize: '14px' },
-  delBtn: { background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', opacity: 0.7 }
+  header: { marginBottom: '32px' },
+  title: { fontSize: '26px', fontWeight: '800', background: 'linear-gradient(135deg, #fff 30%, var(--primary) 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' },
+  subtitle: { fontSize: '14px', color: 'var(--text-muted)', marginTop: '4px' },
+  layout: { display: 'flex', gap: '24px', flexWrap: 'wrap', alignItems: 'flex-start' },
+  formCard: { flex: '0.8', minWidth: '320px' },
+  listCard: { flex: '1.2', minWidth: '400px' },
+  cardHeader: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '24px', borderBottom: '1px solid var(--border-light)', paddingBottom: '12px' },
+  cardTitle: { fontSize: '16px', fontWeight: '700' },
+  grid2: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' },
+  submitBtn: { width: '100%', marginTop: '12px' },
+  table: { width: '100%' },
+  tr: { transition: 'background 0.2s' },
+  avatarMini: { width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(99, 102, 241, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' },
+  delBtn: { background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', opacity: 0.6, padding: '8px', borderRadius: '6px', transition: '0.2s' }
 };
