@@ -14,7 +14,6 @@ import {
   Clock,
   Ticket,
   Hash,
-  Activity,
   Award
 } from 'lucide-react';
 
@@ -22,43 +21,21 @@ export default function InputFinding() {
   const { users, addFinding, currentUser } = useContext(AppContext);
   const navigate = useNavigate();
 
-  const agents = useMemo(() => {
-    return users.filter(u => u.role === 'Agent');
-  }, [users]);
+  const agents = useMemo(() => users.filter(u => u.role === 'Agent'), [users]);
 
-  // Form States
   const [selectedAgent, setSelectedAgent] = useState('');
-  const [auditDate, setAuditDate] = useState(() => {
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const dd = String(today.getDate()).padStart(2, '0');
-    return `${yyyy}-${mm}-${dd}`;
-  });
+  const [auditDate, setAuditDate] = useState(() => new Date().toISOString().split('T')[0]);
 
-  // Call Metadata States
   const [msisdn, setMsisdn] = useState('');
   const [noTiket, setNoTiket] = useState('');
   const [noCWC, setNoCWC] = useState('');
   const [duration, setDuration] = useState('');
-  const [callDate, setCallDate] = useState(() => {
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const dd = String(today.getDate()).padStart(2, '0');
-    return `${yyyy}-${mm}-${dd}`;
-  });
+  const [callDate, setCallDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [callTime, setCallTime] = useState('');
-
-  const effectiveAgent = selectedAgent || (agents.length > 0 ? agents[0].name : '');
 
   const [paramScores, setParamScores] = useState(() => {
     const initial = {};
-    QM_CATEGORIES.forEach(cat => {
-      cat.parameters.forEach(p => {
-        initial[p.id] = 1; 
-      });
-    });
+    QM_CATEGORIES.forEach(cat => cat.parameters.forEach(p => { initial[p.id] = 1; }));
     return initial;
   });
 
@@ -67,171 +44,94 @@ export default function InputFinding() {
   const [success, setSuccess] = useState(false);
   const [expandedCategory, setExpandedCategory] = useState('A');
 
+  const effectiveAgent = selectedAgent || (agents.length > 0 ? agents[0].name : '');
+
   const calculatedScore = useMemo(() => {
     let score = 0;
-    QM_CATEGORIES.forEach(cat => {
-      cat.parameters.forEach(p => {
-        if (paramScores[p.id] === 1) {
-          score += p.weight;
-        }
-      });
-    });
+    QM_CATEGORIES.forEach(cat => cat.parameters.forEach(p => { if (paramScores[p.id] === 1) score += p.weight; }));
     return score;
   }, [paramScores]);
 
   const handleParamChange = (paramId, value) => {
     const val = Number(value);
     setParamScores(prev => ({ ...prev, [paramId]: val }));
-    if (val === 1) {
-      setFailedSubParams(prev => {
-        const newFailed = { ...prev };
-        delete newFailed[paramId];
-        return newFailed;
-      });
-    }
+    if (val === 1) setFailedSubParams(prev => { const n = { ...prev }; delete n[paramId]; return n; });
   };
 
   const toggleSubParam = (paramId, subIdx) => {
     setFailedSubParams(prev => {
-      const current = prev[paramId] || [];
-      if (current.includes(subIdx)) {
-        return { ...prev, [paramId]: current.filter(i => i !== subIdx) };
-      } else {
-        return { ...prev, [paramId]: [...current, subIdx] };
-      }
+      const curr = prev[paramId] || [];
+      return curr.includes(subIdx) ? { ...prev, [paramId]: curr.filter(i => i !== subIdx) } : { ...prev, [paramId]: [...curr, subIdx] };
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    addFinding({
-      date: auditDate,
-      agentName: effectiveAgent,
-      paramScores,
-      failedSubParams,
-      isFatal: false,
-      notes: notes,
-      msisdn,
-      noTiket,
-      noCWC,
-      duration,
-      callDate,
-      callTime
-    });
+    await addFinding({ date: auditDate, agentName: effectiveAgent, paramScores, failedSubParams, isFatal: false, notes, msisdn, noTiket, noCWC, duration, callDate, callTime });
     setSuccess(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    setTimeout(() => {
-      setSuccess(false);
-      navigate('/dashboard');
-    }, 2000);
+    setTimeout(() => navigate('/dashboard'), 2000);
   };
 
-  const hasAccess = ['superadmin', 'QC', 'TL'].includes(currentUser?.role);
-  if (!hasAccess) {
-    return (
-      <div className="main-content" style={styles.accessDeniedContainer}>
-        <div className="glass-card" style={styles.accessDeniedCard}>
-          <AlertTriangle size={48} color="var(--danger)" />
-          <h2 style={{ color: 'var(--danger)', marginTop: '16px' }}>Akses Ditolak!</h2>
-          <button onClick={() => navigate('/dashboard')} className="btn-primary" style={{ marginTop: '20px' }}>Dashboard</button>
-        </div>
-      </div>
-    );
-  }
+  if (!['superadmin', 'QC', 'TL'].includes(currentUser?.role)) return null;
 
   return (
-    <div className="main-content" style={{ marginTop: '20px', maxWidth: '1200px' }}>
+    <div className="main-content">
       <div style={styles.header}>
-        <h2 style={styles.title}>Evaluasi Penilaian QMS Baru</h2>
-        <p style={styles.subtitle}>Audit kualitas layanan berdasarkan 12 parameter standar perusahaan.</p>
+        <h2 style={styles.title}>New Evaluation</h2>
+        <p style={styles.subtitle}>Input hasil monitoring 12 parameter standar.</p>
       </div>
 
       {success && (
-        <div className="glass-card" style={styles.successCard}>
-          <CheckCircle2 size={32} color="var(--success)" />
-          <div>
-            <h4 style={{ color: 'var(--success)', margin: 0 }}>Audit Berhasil Disimpan!</h4>
-            <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: 'var(--text-muted)' }}>Mengarahkan kembali ke dashboard...</p>
-          </div>
+        <div className="glass-card success-alert" style={styles.successCard}>
+          <CheckCircle2 size={24} color="var(--success)" />
+          <span style={{ fontWeight: '600' }}>Data Audit Berhasil Disimpan!</span>
         </div>
       )}
 
-      <div style={styles.layout}>
-        <div style={styles.formSection}>
+      <div className="input-layout" style={styles.layout}>
+        <div className="form-main" style={styles.formMain}>
           <form onSubmit={handleSubmit} id="qmsForm">
-            {/* 1. Informasi Agent Card */}
-            <div className="glass-card" style={styles.card}>
-              <div style={styles.cardHeader}>
-                <User size={18} color="var(--primary)" />
-                <h3 style={styles.cardTitle}>Informasi Audit</h3>
-              </div>
-              <div style={styles.formGrid}>
+            {/* Metadata Audit */}
+            <div className="glass-card" style={{ marginBottom: '20px' }}>
+              <div style={styles.grid2} className="grid-2">
                 <div className="form-group">
-                  <label className="form-label">Nama Agent</label>
+                  <label className="form-label"><User size={12} /> Agent</label>
                   <select className="form-input" value={effectiveAgent} onChange={(e) => setSelectedAgent(e.target.value)} required>
-                    <option value="" disabled>Pilih Agent</option>
                     {agents.map(a => <option key={a.username} value={a.name}>{a.name}</option>)}
                   </select>
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Tanggal Audit (QC)</label>
+                  <label className="form-label"><Calendar size={12} /> Tgl Audit</label>
                   <input type="date" className="form-input" value={auditDate} onChange={(e) => setAuditDate(e.target.value)} required />
                 </div>
               </div>
             </div>
 
-            {/* 2. Parameter Categories */}
+            {/* Categories */}
             {QM_CATEGORIES.map(cat => (
-              <div key={cat.id} className="glass-card" style={{ ...styles.card, padding: 0, overflow: 'hidden' }}>
-                <div style={styles.categoryHeader} onClick={() => setExpandedCategory(expandedCategory === cat.id ? null : cat.id)}>
-                  <div style={styles.categoryTitleWrapper}>
-                    <div style={styles.categoryBadge}>{cat.id}</div>
-                    <div>
-                      <h3 style={styles.categoryName}>{cat.name}</h3>
-                      <span style={styles.categoryWeight}>Kontribusi: {cat.weight}% dari total QMS</span>
-                    </div>
+              <div key={cat.id} className="glass-card" style={{ marginBottom: '16px', padding: 0, overflow: 'hidden' }}>
+                <div style={styles.catHeader} onClick={() => setExpandedCategory(expandedCategory === cat.id ? null : cat.id)}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={styles.catBadge}>{cat.id}</div>
+                    <div><div style={styles.catName}>{cat.name}</div><div style={styles.catWeight}>{cat.weight}%</div></div>
                   </div>
-                  {expandedCategory === cat.id ? <ChevronUp size={20} color="var(--primary)" /> : <ChevronDown size={20} color="var(--text-muted)" />}
+                  {expandedCategory === cat.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                 </div>
-
                 {expandedCategory === cat.id && (
-                  <div style={styles.categoryContent}>
-                    {cat.parameters.map(param => (
-                      <div key={param.id} style={styles.paramItem}>
-                        <div style={styles.paramMain}>
-                          <div style={styles.paramInfo}>
-                            <h4 style={styles.paramName}>{param.id}. {param.name}</h4>
-                            <span style={styles.paramWeight}>Bobot: {param.weight}%</span>
-                          </div>
-                          <div style={styles.selectWrapper}>
-                            <select 
-                              className="form-input" 
-                              style={{ 
-                                borderColor: paramScores[param.id] === 0 ? 'var(--danger)' : 'var(--success)',
-                                color: paramScores[param.id] === 0 ? 'var(--danger)' : 'var(--success)',
-                                fontWeight: 'bold'
-                              }} 
-                              value={paramScores[param.id]} 
-                              onChange={(e) => handleParamChange(param.id, e.target.value)}
-                            >
-                              <option value={1}>1 (PASS)</option>
-                              <option value={0}>0 (FAIL)</option>
-                            </select>
-                          </div>
+                  <div style={{ padding: '0 16px 16px' }}>
+                    {cat.parameters.map(p => (
+                      <div key={p.id} style={styles.paramItem}>
+                        <div style={styles.paramTop}>
+                          <div style={{ flex: 1, fontSize: '13px', fontWeight: '500' }}>{p.id}. {p.name}</div>
+                          <select className="form-input" style={{ width: '80px', padding: '6px' }} value={paramScores[p.id]} onChange={(e) => handleParamChange(p.id, e.target.value)}>
+                            <option value={1}>1</option><option value={0}>0</option>
+                          </select>
                         </div>
-                        {paramScores[param.id] === 0 && (
-                          <div style={styles.subParamsContainer}>
-                            <p style={styles.subParamsTitle}>Alasan Ketidaksesuaian:</p>
-                            {param.subParams.map((sub, idx) => (
-                              <label key={idx} style={styles.subParamLabel}>
-                                <input 
-                                  type="checkbox" 
-                                  style={styles.checkbox}
-                                  checked={(failedSubParams[param.id] || []).includes(idx)} 
-                                  onChange={() => toggleSubParam(param.id, idx)} 
-                                />
-                                <span style={styles.subParamText}>{sub}</span>
-                              </label>
+                        {paramScores[p.id] === 0 && (
+                          <div style={styles.subList}>
+                            {p.subParams.map((s, idx) => (
+                              <label key={idx} style={styles.subItem}><input type="checkbox" checked={(failedSubParams[p.id] || []).includes(idx)} onChange={() => toggleSubParam(p.id, idx)} /><span style={{ fontSize: '11px' }}>{s}</span></label>
                             ))}
                           </div>
                         )}
@@ -242,112 +142,42 @@ export default function InputFinding() {
               </div>
             ))}
 
-            {/* 3. Call Detail & Notes Card */}
-            <div className="glass-card" style={styles.card}>
-              <div style={styles.cardHeader}>
-                <Activity size={18} color="var(--primary)" />
-                <h3 style={styles.cardTitle}>Detail Call & Catatan Auditor</h3>
+            {/* Detail Call & Notes */}
+            <div className="glass-card" style={{ marginTop: '20px' }}>
+              <h3 style={styles.secTitle}>Detail Call & Catatan</h3>
+              <div style={styles.grid3} className="grid-3">
+                <div className="form-group"><label className="form-label">MSISDN</label><input type="text" className="form-input" value={msisdn} onChange={e => setMsisdn(e.target.value)} /></div>
+                <div className="form-group"><label className="form-label">No Tiket</label><input type="text" className="form-input" value={noTiket} onChange={e => setNoTiket(e.target.value)} /></div>
+                <div className="form-group"><label className="form-label">No CWC</label><input type="text" className="form-input" value={noCWC} onChange={e => setNoCWC(e.target.value)} /></div>
+                <div className="form-group"><label className="form-label">Durasi</label><input type="text" className="form-input" value={duration} onChange={e => setDuration(e.target.value)} /></div>
+                <div className="form-group"><label className="form-label">Tgl Call</label><input type="date" className="form-input" value={callDate} onChange={e => setCallDate(e.target.value)} /></div>
+                <div className="form-group"><label className="form-label">Jam Call</label><input type="text" className="form-input" value={callTime} onChange={e => setCallTime(e.target.value)} /></div>
               </div>
-              
-              <div style={styles.metaGrid}>
-                <div className="form-group">
-                  <label className="form-label-small"><Hash size={12} /> MSISDN</label>
-                  <input type="text" className="form-input" value={msisdn} onChange={(e) => setMsisdn(e.target.value)} placeholder="08..." />
-                </div>
-                <div className="form-group">
-                  <label className="form-label-small"><Ticket size={12} /> No Tiket</label>
-                  <input type="text" className="form-input" value={noTiket} onChange={(e) => setNoTiket(e.target.value)} placeholder="IN..." />
-                </div>
-                <div className="form-group">
-                  <label className="form-label-small"><FilePlus size={12} /> No CWC</label>
-                  <input type="text" className="form-input" value={noCWC} onChange={(e) => setNoCWC(e.target.value)} placeholder="CWC..." />
-                </div>
-                <div className="form-group">
-                  <label className="form-label-small"><Clock size={12} /> Durasi Call</label>
-                  <input type="text" className="form-input" value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="mm:ss" />
-                </div>
-                <div className="form-group">
-                  <label className="form-label-small"><Calendar size={12} /> Tanggal Call</label>
-                  <input type="date" className="form-input" value={callDate} onChange={(e) => setCallDate(e.target.value)} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label-small"><Clock size={12} /> Jam Call</label>
-                  <input type="text" className="form-input" value={callTime} onChange={(e) => setCallTime(e.target.value)} placeholder="HH:mm" />
-                </div>
+              <div className="form-group" style={{ marginTop: '16px' }}>
+                <label className="form-label"><MessageSquare size={12} /> Catatan Auditor</label>
+                <textarea className="form-input" rows="4" value={notes} onChange={e => setNotes(e.target.value)} required placeholder="Rincian feedback..."></textarea>
               </div>
-
-              <div className="form-group" style={{ marginTop: '24px' }}>
-                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <MessageSquare size={14} color="var(--primary)" /> 
-                  Catatan Perbaikan/Apresiasi
-                </label>
-                <textarea 
-                  className="form-input" 
-                  rows="5" 
-                  value={notes} 
-                  onChange={(e) => setNotes(e.target.value)} 
-                  placeholder="Tuliskan feedback detail hasil pengamatan call..."
-                  required
-                  style={{ width: '100%', resize: 'vertical' }}
-                ></textarea>
-              </div>
-
-              <button type="submit" className="btn-primary" style={styles.submitBtnMain}>
-                <FilePlus size={18} /> Simpan Seluruh Data Audit
-              </button>
+              <button type="submit" className="btn-primary" style={{ width: '100%', marginTop: '16px' }}>Submit Audit</button>
             </div>
           </form>
         </div>
 
-        {/* Right Sidebar: Sticky Score Summary */}
-        <div style={styles.summarySection}>
-          <div className="glass-card" style={styles.stickyCard}>
-            <div style={styles.scoreTitleBox}>
-              <Award size={20} color="var(--primary)" />
-              <h3 style={styles.summaryTitle}>Kalkulasi Skor</h3>
-            </div>
-            
-            <div style={styles.scoreCircleWrapper}>
-              <div style={{
-                ...styles.scoreCircle,
-                borderColor: calculatedScore >= 90 ? 'var(--success)' : (calculatedScore >= 80 ? 'var(--warning)' : 'var(--danger)'),
-                boxShadow: `0 0 20px ${calculatedScore >= 90 ? 'var(--success-glow)' : 'var(--primary-glow)'}`
-              }}>
-                <span style={{ 
-                  ...styles.scoreNumber,
-                  color: calculatedScore >= 90 ? 'var(--success)' : (calculatedScore >= 80 ? 'var(--warning)' : 'var(--danger)')
-                }}>{calculatedScore}%</span>
-                <span style={styles.scoreLabel}>TOTAL QMS</span>
-              </div>
-            </div>
-
-            <div style={styles.breakdown}>
+        {/* Score Sidebar */}
+        <div className="form-side" style={styles.formSide}>
+          <div className="glass-card sticky-score" style={styles.stickyScore}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '20px' }}><Award size={20} color="var(--primary)" /><span style={{ fontWeight: '700' }}>QMS SCORE</span></div>
+            <div style={{ fontSize: '48px', fontWeight: '900', color: calculatedScore >= 80 ? 'var(--success)' : 'var(--danger)', marginBottom: '20px' }}>{calculatedScore}%</div>
+            <div style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {QM_CATEGORIES.map(cat => {
-                const catScore = cat.parameters.reduce((acc, p) => acc + (paramScores[p.id] === 1 ? p.weight : 0), 0);
-                const isWarning = catScore < cat.weight;
+                const s = cat.parameters.reduce((acc, p) => acc + (paramScores[p.id] === 1 ? p.weight : 0), 0);
                 return (
-                  <div key={cat.id} style={styles.breakdownItem}>
-                    <div style={styles.breakdownRow}>
-                      <span style={styles.breakdownLabel}>{cat.name}</span>
-                      <span style={{ ...styles.breakdownVal, color: isWarning ? 'var(--warning)' : 'var(--text-heading)' }}>
-                        {catScore}/{cat.weight}
-                      </span>
-                    </div>
-                    <div style={styles.progressBar}>
-                      <div style={{ 
-                        ...styles.progressFill, 
-                        width: `${(catScore/cat.weight)*100}%`, 
-                        background: catScore === cat.weight ? 'var(--success)' : 'var(--primary)' 
-                      }}></div>
-                    </div>
+                  <div key={cat.id}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '4px' }}><span>{cat.name}</span><span>{s}/{cat.weight}</span></div>
+                    <div style={{ height: '4px', background: 'var(--border-light)', borderRadius: '2px', overflow: 'hidden' }}><div style={{ height: '100%', width: `${(s/cat.weight)*100}%`, background: 'var(--primary)' }}></div></div>
                   </div>
                 );
               })}
             </div>
-
-            <button type="submit" form="qmsForm" className="btn-primary" style={styles.submitBtnSticky}>
-              Submit Audit
-            </button>
           </div>
         </div>
       </div>
@@ -357,103 +187,34 @@ export default function InputFinding() {
 
 const styles = {
   header: { marginBottom: '24px' },
-  title: { 
-    fontSize: '26px', 
-    fontWeight: '800', 
-    background: 'linear-gradient(135deg, #fff 30%, var(--primary) 100%)',
-    WebkitBackgroundClip: 'text',
-    WebkitTextFillColor: 'transparent',
-  },
-  subtitle: { fontSize: '14px', color: 'var(--text-muted)', marginTop: '4px' },
-  layout: { display: 'flex', gap: '24px', flexWrap: 'wrap', alignItems: 'flex-start' },
-  formSection: { flex: '1.4', minWidth: '320px' },
-  summarySection: { flex: '0.6', minWidth: '280px', position: 'sticky', top: '20px' },
-  card: { padding: '24px', marginBottom: '24px' },
-  cardHeader: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px', borderBottom: '1px solid var(--border-light)', paddingBottom: '12px' },
-  cardTitle: { fontSize: '16px', fontWeight: '700', color: 'var(--text-heading)' },
-  formGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' },
-  metaGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' },
-  categoryHeader: { 
-    display: 'flex', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
-    cursor: 'pointer',
-    padding: '16px 24px',
-    transition: 'background 0.2s ease',
-    '&:hover': { background: 'rgba(255,255,255,0.02)' }
-  },
-  categoryTitleWrapper: { display: 'flex', alignItems: 'center', gap: '16px' },
-  categoryBadge: { 
-    width: '36px', 
-    height: '36px', 
-    borderRadius: '10px', 
-    background: 'var(--primary)', 
-    display: 'flex', 
-    alignItems: 'center', 
-    justifyContent: 'center', 
-    fontWeight: '800',
-    fontSize: '18px',
-    boxShadow: '0 4px 12px var(--primary-glow)'
-  },
-  categoryName: { fontSize: '16px', fontWeight: '700', color: '#fff' },
-  categoryWeight: { fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginTop: '2px' },
-  categoryContent: { padding: '0 24px 24px 24px', borderTop: '1px solid var(--border-light)' },
-  paramItem: { padding: '20px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' },
-  paramMain: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '20px' },
-  paramInfo: { flex: 1 },
-  paramName: { fontSize: '14px', fontWeight: '600', color: 'var(--text-heading)', lineHeight: '1.5' },
-  paramWeight: { fontSize: '11px', color: 'var(--text-muted)', fontWeight: '500' },
-  selectWrapper: { width: '120px' },
-  subParamsContainer: { 
-    marginTop: '16px', 
-    background: 'rgba(239, 68, 68, 0.05)', 
-    padding: '16px', 
-    borderRadius: '12px',
-    border: '1px solid rgba(239, 68, 68, 0.1)'
-  },
-  subParamsTitle: { fontSize: '12px', fontWeight: '700', color: 'var(--danger)', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' },
-  subParamLabel: { display: 'flex', gap: '12px', marginBottom: '10px', cursor: 'pointer', alignItems: 'flex-start' },
-  checkbox: { marginTop: '3px', accentColor: 'var(--danger)', width: '16px', height: '16px' },
-  subParamText: { fontSize: '12px', color: 'var(--text-main)', lineHeight: '1.4' },
-  submitBtnMain: { marginTop: '24px', width: '100%', padding: '16px', fontSize: '15px', fontWeight: '700' },
-  stickyCard: { padding: '24px', textAlign: 'center' },
-  scoreTitleBox: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '20px' },
-  summaryTitle: { fontSize: '16px', fontWeight: '700', color: 'var(--text-heading)' },
-  scoreCircleWrapper: { display: 'flex', justifyContent: 'center', marginBottom: '24px' },
-  scoreCircle: { 
-    width: '150px', 
-    height: '150px', 
-    borderRadius: '50%', 
-    border: '6px solid var(--primary)', 
-    display: 'flex', 
-    flexDirection: 'column', 
-    alignItems: 'center', 
-    justifyContent: 'center', 
-    background: 'rgba(0,0,0,0.3)',
-    transition: 'all 0.3s ease'
-  },
-  scoreNumber: { fontSize: '42px', fontWeight: '900', fontFamily: 'var(--font-heading)' },
-  scoreLabel: { fontSize: '10px', fontWeight: '800', color: 'var(--text-muted)', letterSpacing: '1.5px' },
-  breakdown: { textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '16px' },
-  breakdownItem: { display: 'flex', flexDirection: 'column', gap: '6px' },
-  breakdownRow: { display: 'flex', justifyContent: 'space-between', fontSize: '12px' },
-  breakdownLabel: { color: 'var(--text-muted)', fontWeight: '500' },
-  breakdownVal: { fontWeight: '800' },
-  progressBar: { height: '6px', background: 'var(--border-light)', borderRadius: '3px', overflow: 'hidden' },
-  progressFill: { height: '100%', borderRadius: '3px', transition: 'width 0.5s ease' },
-  submitBtnSticky: { marginTop: '24px', width: '100%', padding: '12px' },
-  successCard: { 
-    background: 'rgba(16, 185, 129, 0.15)', 
-    border: '1px solid rgba(16, 185, 129, 0.3)',
-    padding: '20px', 
-    marginBottom: '24px', 
-    borderRadius: '16px', 
-    display: 'flex', 
-    alignItems: 'center', 
-    gap: '16px',
-    boxShadow: '0 8px 32px rgba(16, 185, 129, 0.1)'
-  },
-  accessDeniedContainer: { display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' },
-  accessDeniedCard: { textAlign: 'center', padding: '40px', maxWidth: '400px' },
-  formLabelSmall: { display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--text-muted)', fontWeight: '600', marginBottom: '6px' }
+  title: { fontSize: '24px', fontWeight: '800' },
+  subtitle: { fontSize: '13px', color: 'var(--text-muted)' },
+  layout: { display: 'flex', gap: '24px', flexWrap: 'wrap' },
+  formMain: { flex: '1', minWidth: '320px' },
+  formSide: { width: '100%', maxWidth: '280px' },
+  stickyScore: { textAlign: 'center', position: 'sticky', top: '20px' },
+  grid2: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '16px' },
+  grid3: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '12px' },
+  catHeader: { padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' },
+  catBadge: { width: '32px', height: '32px', background: 'var(--primary)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '800' },
+  catName: { fontSize: '14px', fontWeight: '700' },
+  catWeight: { fontSize: '10px', color: 'var(--text-muted)' },
+  paramItem: { padding: '12px 0', borderBottom: '1px solid var(--border-light)' },
+  paramTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' },
+  subList: { marginTop: '10px', background: 'rgba(239, 68, 68, 0.05)', padding: '12px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '8px' },
+  subItem: { display: 'flex', gap: '8px', cursor: 'pointer', alignItems: 'flex-start' },
+  secTitle: { fontSize: '14px', fontWeight: '700', marginBottom: '16px', color: 'var(--primary)' },
+  successCard: { background: 'rgba(16, 185, 129, 0.15)', border: '1px solid var(--success)', padding: '16px', marginBottom: '24px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '12px' }
 };
+
+// Global Responsive Overrides
+if (typeof document !== 'undefined') {
+  const style = document.createElement('style');
+  style.innerHTML = `
+    @media (max-width: 768px) {
+      .form-side { max-width: 100% !important; order: -1; }
+      .grid-3 { grid-template-columns: 1fr 1fr !important; }
+    }
+  `;
+  document.head.appendChild(style);
+}

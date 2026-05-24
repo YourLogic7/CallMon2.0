@@ -4,58 +4,49 @@ import { QM_CATEGORIES } from './qmParameters';
 
 export const AppContext = createContext();
 
-const DUMMY_USERS = [
-  { username: 'superadmin', name: 'Rian Superadmin', password: 'admin123', role: 'superadmin' },
-  { username: 'qc1', name: 'Rina Quality Control', password: 'qc123', role: 'QC' },
-  { username: 'tl1', name: 'Budi Team Leader', password: 'tl123', role: 'TL' },
-  { username: 'agent1', name: 'Andi Agent', password: 'agent123', role: 'Agent' },
-  { username: 'agent2', name: 'Siti Agent', password: 'agent123', role: 'Agent' },
-  { username: 'agent3', name: 'Dewi Agent', password: 'agent123', role: 'Agent' },
-];
-
-const INITIAL_FINDINGS = [
-  {
-    id: 'AUD-1001',
-    date: '2026-05-24',
-    agentName: 'Andi Agent',
-    auditorName: 'Rina Quality Control',
-    score: 95,
-    isFatal: false,
-    notes: 'Performa sangat baik, hanya sedikit kurang di penutup.',
-    paramScores: { 1: 1, 2: 0, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 1, 10: 1, 11: 1, 12: 1 },
-    failedSubParams: { 2: [0] },
-    msisdn: '08123456789',
-    noTiket: 'IN123456',
-    noCWC: 'CWC-999',
-    duration: '05:20',
-    callDate: '2026-05-24',
-    callTime: '10:30'
-  }
-];
-
 export const AppContextProvider = ({ children }) => {
-  const [users, setUsers] = useState(() => {
-    const savedUsers = localStorage.getItem('qm_users');
-    return savedUsers ? JSON.parse(savedUsers) : DUMMY_USERS;
-  });
-
-  const [findings, setFindings] = useState(() => {
-    const savedFindings = localStorage.getItem('qm_findings');
-    return savedFindings ? JSON.parse(savedFindings) : INITIAL_FINDINGS;
-  });
+  const [users, setUsers] = useState([]);
+  const [findings, setFindings] = useState([]);
+  const [teamLeaders, setTeamLeaders] = useState([]);
+  const [sdmList, setSdmList] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const [currentUser, setCurrentUser] = useState(() => {
     const savedUser = localStorage.getItem('qm_current_user');
     return savedUser ? JSON.parse(savedUser) : null;
   });
 
+  // Fetch all data on mount
   useEffect(() => {
-    localStorage.setItem('qm_users', JSON.stringify(users));
-  }, [users]);
+    const fetchData = async () => {
+      try {
+        const [usersRes, findingsRes, tlsRes, sdmRes] = await Promise.all([
+          fetch('/api/users'),
+          fetch('/api/findings'),
+          fetch('/api/team-leaders'),
+          fetch('/api/sdm')
+        ]);
 
-  useEffect(() => {
-    localStorage.setItem('qm_findings', JSON.stringify(findings));
-  }, [findings]);
+        const [usersData, findingsData, tlsData, sdmData] = await Promise.all([
+          usersRes.json(),
+          findingsRes.json(),
+          tlsRes.json(),
+          sdmRes.json()
+        ]);
+
+        setUsers(usersData);
+        setFindings(findingsData);
+        setTeamLeaders(tlsData);
+        setSdmList(sdmData);
+      } catch (err) {
+        console.error('Error fetching data:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   useEffect(() => {
     if (currentUser) {
@@ -76,40 +67,128 @@ export const AppContextProvider = ({ children }) => {
     return { success: false, message: 'Username atau password salah!' };
   };
 
-  const signup = (name, username, password, role) => {
-    const exists = users.some((u) => u.username.toLowerCase() === username.toLowerCase());
-    if (exists) {
-      return { success: false, message: 'Username sudah digunakan!' };
+  const signup = async (name, username, password, role) => {
+    try {
+      const res = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, username, password, role })
+      });
+      if (res.ok) {
+        const newUser = await res.json();
+        setUsers(prev => [newUser, ...prev]);
+        return { success: true, user: newUser };
+      } else {
+        const error = await res.json();
+        return { success: false, message: error.message };
+      }
+    } catch (err) {
+      return { success: false, message: 'Network error' };
     }
-    const newUser = { name, username, password, role };
-    setUsers((prev) => [...prev, newUser]);
-    setCurrentUser(newUser);
-    return { success: true, user: newUser };
+  };
+
+  const deleteUser = async (id) => {
+    try {
+      const res = await fetch(`/api/users/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setUsers(prev => prev.filter(u => u._id !== id));
+        return { success: true };
+      }
+    } catch (err) {
+      return { success: false, message: 'Network error' };
+    }
   };
 
   const logout = () => {
     setCurrentUser(null);
   };
 
-  const addFinding = (findingData) => {
-    const nextId = "AUD-" + (1000 + findings.length + 1);
-    let totalScore = 0;
-    const allParams = QM_CATEGORIES.flatMap(cat => cat.parameters);
-    allParams.forEach(param => {
-      if (findingData.paramScores[param.id] === 1) {
-        totalScore += param.weight;
+  const addFinding = async (findingData) => {
+    try {
+      let totalScore = 0;
+      const allParams = QM_CATEGORIES.flatMap(cat => cat.parameters);
+      allParams.forEach(param => {
+        if (findingData.paramScores[param.id] === 1) {
+          totalScore += param.weight;
+        }
+      });
+
+      const res = await fetch('/api/findings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...findingData,
+          auditorName: currentUser ? currentUser.name : 'System Auditor',
+          score: totalScore
+        })
+      });
+
+      if (res.ok) {
+        const savedFinding = await res.json();
+        setFindings(prev => [savedFinding, ...prev]);
+        return savedFinding;
       }
-    });
+    } catch (err) {
+      console.error('Error adding finding:', err);
+    }
+  };
 
-    const newFinding = {
-      id: nextId,
-      ...findingData,
-      auditorName: currentUser ? currentUser.name : 'System Auditor',
-      score: totalScore,
-    };
+  const addTeamLeader = async (name, nik) => {
+    try {
+      const res = await fetch('/api/team-leaders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, nik })
+      });
+      if (res.ok) {
+        const newTL = await res.json();
+        setTeamLeaders(prev => [...prev, newTL]);
+        return { success: true };
+      }
+    } catch (err) {
+      return { success: false };
+    }
+  };
 
-    setFindings((prev) => [newFinding, ...prev]);
-    return newFinding;
+  const deleteTeamLeader = async (id) => {
+    try {
+      const res = await fetch(`/api/team-leaders/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setTeamLeaders(prev => prev.filter(tl => tl._id !== id));
+        return { success: true };
+      }
+    } catch (err) {
+      return { success: false };
+    }
+  };
+
+  const addSDM = async (name, nik, teamName) => {
+    try {
+      const res = await fetch('/api/sdm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, nik, teamName })
+      });
+      if (res.ok) {
+        const newSDM = await res.json();
+        setSdmList(prev => [...prev, newSDM]);
+        return { success: true };
+      }
+    } catch (err) {
+      return { success: false };
+    }
+  };
+
+  const deleteSDM = async (id) => {
+    try {
+      const res = await fetch(`/api/sdm/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setSdmList(prev => prev.filter(s => s._id !== id));
+        return { success: true };
+      }
+    } catch (err) {
+      return { success: false };
+    }
   };
 
   return (
@@ -117,11 +196,19 @@ export const AppContextProvider = ({ children }) => {
       value={{
         users,
         findings,
+        teamLeaders,
+        sdmList,
         currentUser,
+        isLoading,
         login,
         signup,
+        deleteUser,
         logout,
         addFinding,
+        addTeamLeader,
+        deleteTeamLeader,
+        addSDM,
+        deleteSDM
       }}
     >
       {children}

@@ -4,6 +4,9 @@ const cors = require('cors');
 require('dotenv').config();
 
 const Finding = require('./models/Finding');
+const User = require('./models/User');
+const TeamLeader = require('./models/TeamLeader');
+const SDM = require('./models/SDM');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -20,6 +23,93 @@ mongoose.connect(process.env.MONGODB_URI)
 // Routes
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Backend server is running' });
+});
+
+// --- API Users (Account Management) ---
+app.get('/api/users', async (req, res) => {
+  try {
+    const users = await User.find().sort({ createdAt: -1 });
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.post('/api/users', async (req, res) => {
+  try {
+    const newUser = new User(req.body);
+    const savedUser = await newUser.save();
+    res.status(201).json(savedUser);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+app.delete('/api/users/:id', async (req, res) => {
+  try {
+    await User.findByIdAndDelete(req.params.id);
+    res.json({ message: 'User deleted' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// --- API Team Leaders ---
+app.get('/api/team-leaders', async (req, res) => {
+  try {
+    const tls = await TeamLeader.find().sort({ name: 1 });
+    res.json(tls);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.post('/api/team-leaders', async (req, res) => {
+  try {
+    const newTL = new TeamLeader(req.body);
+    const savedTL = await newTL.save();
+    res.status(201).json(savedTL);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+app.delete('/api/team-leaders/:id', async (req, res) => {
+  try {
+    await TeamLeader.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Team Leader deleted' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// --- API SDM ---
+app.get('/api/sdm', async (req, res) => {
+  try {
+    const sdms = await SDM.find().sort({ name: 1 });
+    res.json(sdms);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.post('/api/sdm', async (req, res) => {
+  try {
+    const newSDM = new SDM(req.body);
+    const savedSDM = await newSDM.save();
+    res.status(201).json(savedSDM);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+app.delete('/api/sdm/:id', async (req, res) => {
+  try {
+    await SDM.findByIdAndDelete(req.params.id);
+    res.json({ message: 'SDM deleted' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
 // --- API Findings ---

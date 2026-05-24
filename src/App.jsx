@@ -5,6 +5,8 @@ import Auth from './components/Auth';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import InputFinding from './components/InputFinding';
+import AccountManagement from './components/AccountManagement';
+import TeamManagement from './components/TeamManagement';
 
 function AppContent() {
   const { currentUser } = useContext(AppContext);
@@ -27,6 +29,8 @@ function AppContent() {
       <Routes>
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/input-finding" element={<InputFinding />} />
+        <Route path="/sdm/accounts" element={<AccountManagement />} />
+        <Route path="/sdm/teams" element={<TeamManagement />} />
         <Route path="/login" element={<Navigate to="/dashboard" replace />} />
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
