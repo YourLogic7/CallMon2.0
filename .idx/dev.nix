@@ -6,6 +6,7 @@
   # Use https://search.nixos.org/packages to find packages
   packages = [
     pkgs.nodejs_22
+    pkgs.openssh
   ];
   # Sets environment variables in the workspace
   env = {};
@@ -19,10 +20,14 @@
       # Runs when a workspace is first created with this `dev.nix` file
       onCreate = {
         npm-install = "npm i --no-audit --no-progress --timing";
+        server-install = "cd server && npm i --no-audit --no-progress --timing";
         # Open editors for the following files by default, if they exist:
         default.openFiles = [ "src/App.tsx" "src/App.ts" "src/App.jsx" "src/App.js" ];
       };
       # To run something each time the workspace is (re)started, use the `onStart` hook
+      onStart = {
+        run-server = "cd server && npm run dev";
+      };
     };
     # Enable previews and customize configuration
     previews = {

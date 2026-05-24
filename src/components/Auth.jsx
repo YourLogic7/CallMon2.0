@@ -77,7 +77,7 @@ export default function Auth() {
             <div style={styles.logoCircle}>
               <Award size={36} color="#6366f1" />
             </div>
-            <h1 style={styles.title}>CallMon20</h1>
+            <h1 style={styles.title}>CallMon2.0</h1>
             <p style={styles.subtitle}>Quality Monitoring (QM) Score Monitoring Tool</p>
           </div>
 

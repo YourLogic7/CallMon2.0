@@ -59,7 +59,7 @@ export default function Sidebar() {
       <div style={styles.mobileNav}>
         <div style={styles.mobileLogo}>
           <ShieldAlert size={24} color="#6366f1" />
-          <span style={{ fontWeight: 700, fontSize: '18px', marginLeft: '8px' }}>CallMon20</span>
+          <span style={{ fontWeight: 700, fontSize: '18px', marginLeft: '8px' }}>CallMon2.0</span>
         </div>
         <button onClick={() => setIsMobileOpen(!isMobileOpen)} style={styles.mobileToggle}>
           <Menu size={24} />
