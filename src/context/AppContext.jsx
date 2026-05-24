@@ -1,5 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useState, useEffect } from 'react';
+import { QM_CATEGORIES } from './qmParameters';
 
 export const AppContext = createContext();
 
@@ -15,123 +16,14 @@ const DUMMY_USERS = [
 const INITIAL_FINDINGS = [
   {
     id: 'AUD-1001',
-    date: '2026-03-10',
+    date: '2026-05-24',
     agentName: 'Andi Agent',
     auditorName: 'Rina Quality Control',
-    softSkills: 85,
-    productKnowledge: 90,
-    processCompliance: 100,
-    isFatal: false,
-    score: 93,
-    notes: 'Komunikasi sangat ramah, pemahaman produk mantap.',
-  },
-  {
-    id: 'AUD-1002',
-    date: '2026-03-15',
-    agentName: 'Siti Agent',
-    auditorName: 'Budi Team Leader',
-    softSkills: 75,
-    productKnowledge: 80,
-    processCompliance: 0,
-    isFatal: true,
-    score: 0,
-    notes: 'Proses verifikasi identitas terlewat (Fatal Error!).',
-  },
-  {
-    id: 'AUD-1003',
-    date: '2026-03-22',
-    agentName: 'Dewi Agent',
-    auditorName: 'Rina Quality Control',
-    softSkills: 90,
-    productKnowledge: 85,
-    processCompliance: 100,
-    isFatal: false,
-    score: 93,
-    notes: 'Kepatuhan SOP sangat tinggi, intonasi suara bersahabat.',
-  },
-  {
-    id: 'AUD-1004',
-    date: '2026-04-05',
-    agentName: 'Andi Agent',
-    auditorName: 'Budi Team Leader',
-    softSkills: 80,
-    productKnowledge: 85,
-    processCompliance: 100,
-    isFatal: false,
-    score: 90,
-    notes: 'Penyelesaian masalah cepat dan tepat sasaran.',
-  },
-  {
-    id: 'AUD-1005',
-    date: '2026-04-12',
-    agentName: 'Siti Agent',
-    auditorName: 'Rina Quality Control',
-    softSkills: 88,
-    productKnowledge: 82,
-    processCompliance: 100,
-    isFatal: false,
-    score: 91,
-    notes: 'Ada peningkatan di empati dibanding audit sebelumnya.',
-  },
-  {
-    id: 'AUD-1006',
-    date: '2026-04-20',
-    agentName: 'Dewi Agent',
-    auditorName: 'Budi Team Leader',
-    softSkills: 92,
-    productKnowledge: 90,
-    processCompliance: 100,
-    isFatal: false,
     score: 95,
-    notes: 'Luar biasa, sangat profesional dalam menghadapi komplain.',
-  },
-  {
-    id: 'AUD-1007',
-    date: '2026-05-02',
-    agentName: 'Andi Agent',
-    auditorName: 'Rina Quality Control',
-    softSkills: 70,
-    productKnowledge: 75,
-    processCompliance: 100,
     isFatal: false,
-    score: 84,
-    notes: 'Perlu peningkatan di penjelasan promo cashback terbaru.',
-  },
-  {
-    id: 'AUD-1008',
-    date: '2026-05-10',
-    agentName: 'Siti Agent',
-    auditorName: 'Budi Team Leader',
-    softSkills: 85,
-    productKnowledge: 85,
-    processCompliance: 100,
-    isFatal: false,
-    score: 91,
-    notes: 'Verifikasi lengkap, penutupan telepon hangat.',
-  },
-  {
-    id: 'AUD-1009',
-    date: '2026-05-18',
-    agentName: 'Dewi Agent',
-    auditorName: 'Rina Quality Control',
-    softSkills: 95,
-    productKnowledge: 95,
-    processCompliance: 100,
-    isFatal: false,
-    score: 97,
-    notes: 'Hasil sempurna! Sangat menguasai materi update sistem.',
-  },
-  {
-    id: 'AUD-1010',
-    date: '2026-05-22',
-    agentName: 'Andi Agent',
-    auditorName: 'Budi Team Leader',
-    softSkills: 80,
-    productKnowledge: 80,
-    processCompliance: 0,
-    isFatal: true,
-    score: 0,
-    notes: 'Tidak mengkonfirmasi nama pelanggan di awal (Fatal Error!).',
+    notes: 'Performa sangat baik, hanya sedikit kurang di penutup.',
+    paramScores: { 1: 1, 2: 0, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 1, 10: 1, 11: 1, 12: 1 },
+    failedSubParams: { 2: [0] }
   }
 ];
 
@@ -194,29 +86,28 @@ export const AppContextProvider = ({ children }) => {
   };
 
   const addFinding = (findingData) => {
-    const nextId = `AUD-${1000 + findings.length + 1}`;
+    const nextId = "AUD-" + (1000 + findings.length + 1);
     
-    // Perhitungan nilai QMS
-    // Soft skills (30%), Product Knowledge (30%), Process Compliance (40%)
-    // Jika isFatal = true, maka QMS Score = 0
-    const soft = Number(findingData.softSkills);
-    const prod = Number(findingData.productKnowledge);
-    const compliance = findingData.isFatal ? 0 : 100;
-    const finalScore = findingData.isFatal 
-      ? 0 
-      : Math.round(soft * 0.3 + prod * 0.3 + compliance * 0.4);
+    // Calculate Score based on parameters
+    let totalScore = 0;
+    const allParams = QM_CATEGORIES.flatMap(cat => cat.parameters);
+    
+    allParams.forEach(param => {
+      if (findingData.paramScores[param.id] === 1) {
+        totalScore += param.weight;
+      }
+    });
 
     const newFinding = {
       id: nextId,
       date: findingData.date,
       agentName: findingData.agentName,
       auditorName: currentUser ? currentUser.name : 'System Auditor',
-      softSkills: soft,
-      productKnowledge: prod,
-      processCompliance: compliance,
-      isFatal: findingData.isFatal,
-      score: finalScore,
+      score: totalScore,
+      isFatal: totalScore < 100 && findingData.isFatal,
       notes: findingData.notes,
+      paramScores: findingData.paramScores,
+      failedSubParams: findingData.failedSubParams
     };
 
     setFindings((prev) => [newFinding, ...prev]);
