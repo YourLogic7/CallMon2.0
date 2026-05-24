@@ -63,3 +63,20 @@ Berikut adalah langkah-langkah implementasi terperinci untuk membangun fondasi a
   - **Process Compliance** (Bobot 40%)
   - **Critical/Fatal Issue** (Jika diatur ke "Yes", total skor QMS langsung menjadi 0!).
 - Input data finding akan otomatis memicu pembaruan state global, sehingga dashboard langsung memperbarui data secara dinamis.
+
+---
+
+## 4. Konfigurasi Hosting & Deployment (Vercel)
+Aplikasi ini dikonfigurasi untuk berjalan di Vercel dengan arsitektur Hybrid (Frontend + Serverless Functions).
+
+### Struktur Deployment:
+- **Frontend**: React (Vite) dibangun ke folder `dist/`.
+- **Backend**: Express.js dijalankan melalui Vercel Serverless Functions di folder `api/`.
+- **Routing**: `vercel.json` mengatur pengalihan trafik `/api` ke backend dan sisa rute ke frontend (SPA support).
+
+### Langkah Persiapan di Dashboard Vercel:
+1. **Environment Variables**: Pastikan menambahkan `MONGODB_URI` dan `NODE_ENV=production` di pengaturan Vercel.
+2. **Build Settings**: 
+   - Build Command: `npm run build`
+   - Output Directory: `dist`
+   - Install Command: `npm install`
