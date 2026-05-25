@@ -2,24 +2,19 @@
   "version": 2,
   "builds": [
     {
-      "src": "./api/index.cjs",
-      "use": "@vercel/node"
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
     },
     {
-      "src": "./package.json",
-      "use": "@vercel/static-build",
-      "config": { "distDir": "dist" }
+      "src": "api/index.cjs",
+      "use": "@vercel/node"
     }
   ],
-  "routes": [
-    { 
-      "src": "/api/(.*)", 
-      "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-      "dest": "/api/index.cjs"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
-    }
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/index.cjs" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
