@@ -52,14 +52,13 @@ const FindingSchema = new mongoose.Schema({
 });
 
 // Sync backward compatibility fields before saving
-FindingSchema.pre('save', function(next) {
+FindingSchema.pre('save', function() {
   if (this.auditorName && !this.evaluatorName) {
     this.evaluatorName = this.auditorName;
   }
   if (this.score !== undefined && this.finalScore === undefined) {
     this.finalScore = this.score;
   }
-  next();
 });
 
 module.exports = mongoose.model('Finding', FindingSchema);
