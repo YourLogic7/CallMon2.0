@@ -13,15 +13,14 @@ app.use(cors());
 app.use(express.json()); 
 app.use(express.urlencoded({ extended: true }));
 
-// Database Connection
-mongoose.connect(process.env.MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-}).then(() => {
-  console.log('Connected to MongoDB');
-}).catch(err => {
-  console.error('Could not connect to MongoDB', err);
-});
+// Database Connection - REMOVED DEPRECATED OPTIONS
+mongoose.connect(process.env.MONGODB_URI)
+  .then(() => {
+    console.log('Connected to MongoDB');
+  })
+  .catch(err => {
+    console.error('Could not connect to MongoDB', err);
+  });
 
 // --- API Routes ---
 
@@ -50,6 +49,8 @@ app.post('/api/signup', async (req, res) => {
     });
 
   } catch (error) {
+    // Added more specific error logging
+    console.error('[SIGNUP ERROR]', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -64,7 +65,6 @@ app.post('/api/login', async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
     
-    // CORRECTED LINE: Added await here
     const isMatch = await user.comparePassword(password);
 
     if (!isMatch) {
@@ -79,14 +79,12 @@ app.post('/api/login', async (req, res) => {
     });
 
   } catch (error) {
+    console.error('[LOGIN ERROR]', error);
     res.status(500).json({ message: error.message });
   }
 });
 
 
-// Fallback for any other requests
-app.get('/api/*', (req, res) => {
-    res.status(404).json({ message: 'API endpoint not found' });
-});
+// REMOVED FAULTY FALLBACK ROUTE
 
 module.exports = app;
