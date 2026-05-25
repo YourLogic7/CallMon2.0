@@ -6,14 +6,13 @@ const jwt = require('jsonwebtoken');
 const User = require('./models/User');
 
 const app = express();
-const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors());
 app.use(express.json()); 
 app.use(express.urlencoded({ extended: true }));
 
-// Database Connection - REMOVED DEPRECATED OPTIONS
+// Database Connection
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => {
     console.log('Connected to MongoDB');
@@ -23,6 +22,18 @@ mongoose.connect(process.env.MONGODB_URI)
   });
 
 // --- API Routes ---
+
+// GET All Users
+app.get('/api/users', async (req, res) => {
+  try {
+    // We select only the fields we need, excluding the password hash
+    const users = await User.find({}).select('name username role createdAt');
+    res.json(users);
+  } catch (error) {
+    console.error('[GET USERS ERROR]', error);
+    res.status(500).json({ message: 'Failed to fetch users' });
+  }
+});
 
 // Signup
 app.post('/api/signup', async (req, res) => {
@@ -41,15 +52,18 @@ app.post('/api/signup', async (req, res) => {
     const user = new User({ name, username, password, role });
     await user.save();
 
-    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
+    // Return the newly created user (excluding password) to be added to the list instantly
+    const createdUser = {
+      _id: user._id,
+      name: user.name,
+      username: user.username,
+      role: user.role,
+      createdAt: user.createdAt
+    };
 
-    res.status(201).json({ 
-      token, 
-      user: { id: user._id, name: user.name, username: user.username, role: user.role }
-    });
+    res.status(201).json(createdUser);
 
   } catch (error) {
-    // Added more specific error logging
     console.error('[SIGNUP ERROR]', error);
     res.status(500).json({ message: error.message });
   }
@@ -83,8 +97,5 @@ app.post('/api/login', async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
-
-
-// REMOVED FAULTY FALLBACK ROUTE
 
 module.exports = app;
