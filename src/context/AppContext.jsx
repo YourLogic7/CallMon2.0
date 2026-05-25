@@ -125,6 +125,7 @@ export const AppContextProvider = ({ children }) => {
       return res.data;
     } catch (err) {
       console.error('Error adding finding:', err);
+      throw err; // Rethrow to let the component handle it
     }
   };
 

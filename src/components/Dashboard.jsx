@@ -36,7 +36,11 @@ export default function Dashboard() {
   const effectiveAgent = isAgentRole ? currentUser.name : selectedAgent;
 
   const uniqueAgents = useMemo(() => ['All', ...new Set(findings.map(f => f.agentName))], [findings]);
-  const uniqueYears = useMemo(() => ['All', ...new Set(findings.map(f => new Date(f.date).getFullYear().toString()))].sort(), [findings]);
+  const uniqueYears = useMemo(() => ['All', ...new Set(findings.map(f => {
+    const d = new Date(f.date);
+    return isNaN(d.getTime()) ? 'Unknown' : d.getFullYear().toString();
+  }))].sort(), [findings]);
+
   const months = [
     { value: 'All', label: 'Semua Bulan' }, { value: '0', label: 'Jan' }, { value: '1', label: 'Feb' },
     { value: '2', label: 'Mar' }, { value: '3', label: 'Apr' }, { value: '4', label: 'Mei' },
@@ -52,14 +56,19 @@ export default function Dashboard() {
     return findings.filter((audit) => {
       if (isAgentRole && audit.agentName.toLowerCase() !== currentUser.name.toLowerCase()) return false;
       if (!isAgentRole && selectedAgent !== 'All' && audit.agentName !== selectedAgent) return false;
+      
       const auditDate = new Date(audit.date);
       if (startDate && new Date(startDate) > auditDate) return false;
       if (endDate && new Date(endDate) < auditDate) return false;
       if (selectedMonth !== 'All' && auditDate.getMonth().toString() !== selectedMonth) return false;
       if (selectedYear !== 'All' && auditDate.getFullYear().toString() !== selectedYear) return false;
+      
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
-        return audit.id.toLowerCase().includes(query) || audit.agentName.toLowerCase().includes(query) || (audit.msisdn && audit.msisdn.includes(query));
+        const auditId = (audit.id || audit._id || '').toString().toLowerCase();
+        return auditId.includes(query) || 
+               audit.agentName.toLowerCase().includes(query) || 
+               (audit.msisdn && audit.msisdn.includes(query));
       }
       return true;
     });
@@ -68,11 +77,11 @@ export default function Dashboard() {
   const stats = useMemo(() => {
     const total = filteredFindings.length;
     if (total === 0) return { avgScore: 0, totalAudits: 0, topAgent: '-' };
-    const avgScore = Math.round(filteredFindings.reduce((acc, f) => acc + f.score, 0) / total);
+    const avgScore = Math.round(filteredFindings.reduce((acc, f) => acc + (f.score || 0), 0) / total);
     const agentScores = {};
     filteredFindings.forEach(f => {
       if (!agentScores[f.agentName]) agentScores[f.agentName] = { sum: 0, count: 0 };
-      agentScores[f.agentName].sum += f.score;
+      agentScores[f.agentName].sum += (f.score || 0);
       agentScores[f.agentName].count += 1;
     });
     let topAgentName = '-';
@@ -84,12 +93,15 @@ export default function Dashboard() {
     return { avgScore, totalAudits: total, topAgent: topAgentName };
   }, [filteredFindings]);
 
-  const selectedAudit = useMemo(() => findings.find(f => f.id === selectedAuditId), [selectedAuditId, findings]);
+  const selectedAudit = useMemo(() => findings.find(f => (f.id || f._id) === selectedAuditId), [selectedAuditId, findings]);
 
   const paginatedFindings = useMemo(() => {
     const sorted = [...filteredFindings].sort((a, b) => {
       let aVal = a[sortField], bVal = b[sortField];
-      if (sortField === 'date') { aVal = new Date(a.date).getTime(); bVal = new Date(b.date).getTime(); }
+      if (sortField === 'date') { 
+        aVal = new Date(a.date).getTime() || 0; 
+        bVal = new Date(b.date).getTime() || 0; 
+      }
       return sortDirection === 'asc' ? (aVal > bVal ? 1 : -1) : (aVal < bVal ? 1 : -1);
     });
     return sorted.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
@@ -133,7 +145,7 @@ export default function Dashboard() {
         </div>
         <div className="glass-card stat-card" style={styles.statCard}>
           <div style={styles.statHeader}><span>Top Agent</span><Award size={16} color="var(--success)" /></div>
-          <div style={styles.statValue, { fontSize: '14px', fontWeight: 'bold', marginTop: '10px' }}>{stats.topAgent}</div>
+          <div style={{ ...styles.statValue, fontSize: '14px', fontWeight: 'bold', marginTop: '10px' }}>{stats.topAgent}</div>
         </div>
       </div>
 
@@ -179,12 +191,12 @@ export default function Dashboard() {
             <tbody>
               {paginatedFindings.length === 0 ? <tr><td colSpan="5" style={{ textAlign: 'center', padding: '40px' }}>Tidak ada data audit.</td></tr> : (
                 paginatedFindings.map(audit => (
-                  <tr key={audit.id}>
-                    <td>{audit.id}</td>
+                  <tr key={audit.id || audit._id}>
+                    <td>{(audit.id || audit._id || '').toString().slice(-6)}</td>
                     <td>{audit.date}</td>
                     <td style={{ fontWeight: '600' }}>{audit.agentName}</td>
                     <td>{getScoreBadge(audit.score)}</td>
-                    <td><button onClick={() => setSelectedAuditId(audit.id)} className="btn-primary" style={{ padding: '6px 10px', fontSize: '12px' }}><Eye size={12} /></button></td>
+                    <td><button onClick={() => setSelectedAuditId(audit.id || audit._id)} className="btn-primary" style={{ padding: '6px 10px', fontSize: '12px' }}><Eye size={12} /></button></td>
                   </tr>
                 ))
               )}
@@ -203,7 +215,7 @@ export default function Dashboard() {
         <div style={styles.modalOverlay} onClick={() => setSelectedAuditId(null)}>
           <div className="glass-card modal-card" style={styles.modalCard} onClick={e => e.stopPropagation()}>
             <div style={styles.modalHeader}>
-              <h3>Audit Detail: {selectedAudit.id}</h3>
+              <h3>Audit Detail: {(selectedAudit.id || selectedAudit._id || '').toString()}</h3>
               <button onClick={() => setSelectedAuditId(null)} style={styles.closeBtn}>&times;</button>
             </div>
             <div style={styles.modalBody}>

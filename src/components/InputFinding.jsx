@@ -42,6 +42,8 @@ export default function InputFinding() {
   const [failedSubParams, setFailedSubParams] = useState({});
   const [notes, setNotes] = useState('');
   const [success, setSuccess] = useState(false);
+  const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [expandedCategory, setExpandedCategory] = useState('A');
 
   const effectiveAgent = selectedAgent || (agents.length > 0 ? agents[0].name : '');
@@ -67,10 +69,44 @@ export default function InputFinding() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    await addFinding({ date: auditDate, agentName: effectiveAgent, paramScores, failedSubParams, isFatal: false, notes, msisdn, noTiket, noCWC, duration, callDate, callTime });
-    setSuccess(true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    setTimeout(() => navigate('/dashboard'), 2000);
+    if (!effectiveAgent) {
+      setError('Silakan pilih agent terlebih dahulu.');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError('');
+    
+    try {
+      const result = await addFinding({ 
+        date: auditDate, 
+        agentName: effectiveAgent, 
+        paramScores, 
+        failedSubParams, 
+        isFatal: false, 
+        notes, 
+        msisdn, 
+        noTiket, 
+        noCWC, 
+        duration, 
+        callDate, 
+        callTime 
+      });
+
+      if (result) {
+        setSuccess(true);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        setTimeout(() => navigate('/dashboard'), 2000);
+      } else {
+        throw new Error('Gagal menyimpan data audit.');
+      }
+    } catch (err) {
+      setError(err.message || 'Terjadi kesalahan saat menyimpan data.');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!['superadmin', 'QC', 'TL'].includes(currentUser?.role)) return null;
@@ -86,6 +122,13 @@ export default function InputFinding() {
         <div className="glass-card success-alert" style={styles.successCard}>
           <CheckCircle2 size={24} color="var(--success)" />
           <span style={{ fontWeight: '600' }}>Data Audit Berhasil Disimpan!</span>
+        </div>
+      )}
+
+      {error && (
+        <div className="glass-card danger-alert" style={styles.errorCard}>
+          <AlertTriangle size={24} color="var(--danger)" />
+          <span style={{ fontWeight: '600' }}>{error}</span>
         </div>
       )}
 
