@@ -179,6 +179,17 @@ export const AppContextProvider = ({ children }) => {
     }
   };
 
+  const deleteFinding = async (id) => {
+    try {
+      await api.delete(`/findings/${id}`);
+      setFindings(prev => prev.filter(f => (f.id || f._id) !== id));
+      return { success: true };
+    } catch (err) {
+      console.error('Error deleting finding:', err);
+      return { success: false, message: 'Failed to delete finding' };
+    }
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -192,6 +203,7 @@ export const AppContextProvider = ({ children }) => {
         signup,
         logout,
         addFinding,
+        deleteFinding,
         addTeamLeader,
         deleteTeamLeader,
         addSDM,

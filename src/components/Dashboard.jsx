@@ -9,15 +9,19 @@ import {
   Search,
   RefreshCw,
   Eye,
+  Trash2,
   Clock,
   Ticket,
   Calendar,
   Hash,
-  User
+  User,
+  AlertTriangle,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 
 export default function Dashboard() {
-  const { findings, currentUser } = useContext(AppContext);
+  const { findings, currentUser, deleteFinding } = useContext(AppContext);
 
   const [selectedAgent, setSelectedAgent] = useState('All');
   const [startDate, setStartDate] = useState('');
@@ -33,6 +37,7 @@ export default function Dashboard() {
   const itemsPerPage = 5;
 
   const isAgentRole = currentUser?.role === 'Agent';
+  const canDelete = ['superadmin', 'QC', 'TL'].includes(currentUser?.role);
   const effectiveAgent = isAgentRole ? currentUser.name : selectedAgent;
 
   const uniqueAgents = useMemo(() => ['All', ...new Set(findings.map(f => f.agentName))], [findings]);
@@ -113,6 +118,13 @@ export default function Dashboard() {
     if (sortField === field) setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
     else { setSortField(field); setSortDirection('desc'); }
     setCurrentPage(1);
+  };
+
+  const handleDelete = async (id) => {
+    if (window.confirm('Apakah Anda yakin ingin menghapus data audit ini?')) {
+      const res = await deleteFinding(id);
+      if (!res.success) alert(res.message);
+    }
   };
 
   const getScoreBadge = (score) => {
@@ -196,7 +208,14 @@ export default function Dashboard() {
                     <td>{audit.date}</td>
                     <td style={{ fontWeight: '600' }}>{audit.agentName}</td>
                     <td>{getScoreBadge(audit.score)}</td>
-                    <td><button onClick={() => setSelectedAuditId(audit.id || audit._id)} className="btn-primary" style={{ padding: '6px 10px', fontSize: '12px' }}><Eye size={12} /></button></td>
+                    <td>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button onClick={() => setSelectedAuditId(audit.id || audit._id)} className="btn-primary" style={{ padding: '6px 10px', fontSize: '12px' }}><Eye size={12} /></button>
+                        {canDelete && (
+                          <button onClick={() => handleDelete(audit.id || audit._id)} className="btn-primary" style={{ padding: '6px 10px', fontSize: '12px', background: 'var(--danger)' }}><Trash2 size={12} /></button>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 ))
               )}
@@ -215,7 +234,7 @@ export default function Dashboard() {
         <div style={styles.modalOverlay} onClick={() => setSelectedAuditId(null)}>
           <div className="glass-card modal-card" style={styles.modalCard} onClick={e => e.stopPropagation()}>
             <div style={styles.modalHeader}>
-              <h3>Audit Detail: {(selectedAudit.id || selectedAudit._id || '').toString()}</h3>
+              <h3 style={{ fontSize: '16px', fontWeight: '800' }}>Audit Detail: {(selectedAudit.id || selectedAudit._id || '').toString()}</h3>
               <button onClick={() => setSelectedAuditId(null)} style={styles.closeBtn}>&times;</button>
             </div>
             <div style={styles.modalBody}>
@@ -224,10 +243,47 @@ export default function Dashboard() {
                 <div className="meta-item"><strong>Score:</strong> {selectedAudit.score}%</div>
                 <div className="meta-item"><strong>MSISDN:</strong> {selectedAudit.msisdn || '-'}</div>
                 <div className="meta-item"><strong>Tiket:</strong> {selectedAudit.noTiket || '-'}</div>
+                <div className="meta-item"><strong>Auditor:</strong> {selectedAudit.auditorName || '-'}</div>
+                <div className="meta-item"><strong>Tanggal:</strong> {selectedAudit.date}</div>
               </div>
+
               <div style={{ marginTop: '20px' }}>
-                <h4 style={{ fontSize: '13px', color: 'var(--primary)', marginBottom: '8px' }}>Catatan Auditor:</h4>
-                <p style={{ fontSize: '13px', color: 'var(--text-muted)', fontStyle: 'italic' }}>{selectedAudit.notes || '-'}</p>
+                <h4 style={styles.secTitle}>Hasil Parameter:</h4>
+                <div style={styles.paramGrid}>
+                  {QM_CATEGORIES.map(cat => (
+                    <div key={cat.id} style={{ marginBottom: '12px' }}>
+                      <div style={{ fontSize: '12px', fontWeight: '700', marginBottom: '6px', color: 'var(--primary)', borderBottom: '1px solid var(--border-light)' }}>
+                        {cat.name}
+                      </div>
+                      {cat.parameters.map(p => {
+                        const isSuccess = (selectedAudit.paramScores || {})[p.id] === 1;
+                        const failedSubs = (selectedAudit.failedSubParams || {})[p.id] || [];
+                        return (
+                          <div key={p.id} style={{ marginBottom: '4px', fontSize: '11px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span style={{ color: isSuccess ? 'var(--success)' : 'var(--danger)', fontWeight: '500' }}>
+                                {isSuccess ? '✓' : '✗'} {p.name}
+                              </span>
+                              <span>{isSuccess ? p.weight : 0}/{p.weight}</span>
+                            </div>
+                            {!isSuccess && failedSubs.length > 0 && (
+                              <div style={{ paddingLeft: '14px', color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '10px' }}>
+                                {failedSubs.map(idx => p.subParams[idx]).join(', ')}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ marginTop: '20px' }}>
+                <h4 style={styles.secTitle}>Catatan Auditor:</h4>
+                <p style={{ fontSize: '12px', color: 'var(--text-muted)', fontStyle: 'italic', background: 'var(--bg-light)', padding: '10px', borderRadius: '8px' }}>
+                  {selectedAudit.notes || 'Tidak ada catatan.'}
+                </p>
               </div>
             </div>
           </div>
@@ -251,8 +307,10 @@ const styles = {
   filterGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' },
   pagination: { display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '16px', marginTop: '20px' },
   modalOverlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' },
-  modalCard: { width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto' },
+  modalCard: { width: '100%', maxWidth: '650px', maxHeight: '90vh', overflowY: 'auto', padding: '24px' },
   modalHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--border-light)', paddingBottom: '12px' },
   closeBtn: { background: 'none', border: 'none', color: '#fff', fontSize: '24px', cursor: 'pointer' },
-  modalMetaGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '13px' }
+  modalMetaGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '12px' },
+  secTitle: { fontSize: '13px', fontWeight: '800', marginBottom: '10px', color: 'var(--primary)' },
+  paramGrid: { background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '12px' }
 };
