@@ -86,7 +86,7 @@ export default function Sidebar() {
           </div>
           {!isCollapsed && (
             <div style={styles.brandText}>
-              <span style={styles.brandTitle}>CallMon20</span>
+              <span style={styles.brandTitle}>CallMon2.0</span>
               <span style={styles.brandVer}>v1.0.0</span>
             </div>
           )}
