@@ -16,13 +16,39 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Database Connection
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => {
+let cachedDb = null;
+
+const connectDB = async () => {
+  if (cachedDb && mongoose.connection.readyState === 1) {
+    return cachedDb;
+  }
+
+  console.log('Connecting to MongoDB...');
+  try {
+    const db = await mongoose.connect(process.env.MONGODB_URI, {
+      serverSelectionTimeoutMS: 5000,
+    });
+    cachedDb = db;
     console.log('Connected to MongoDB');
-  })
-  .catch(err => {
-    console.error('Could not connect to MongoDB', err);
-  });
+    return db;
+  } catch (err) {
+    console.error('MongoDB connection error:', err);
+    throw err;
+  }
+};
+
+// Middleware to ensure DB connection
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    res.status(500).json({ 
+      message: 'Database connection failed', 
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined 
+    });
+  }
+});
 
 // --- API Routes ---
 
