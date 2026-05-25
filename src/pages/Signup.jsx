@@ -1,36 +1,23 @@
 import React, { useState, useContext } from 'react';
 import { Link } from 'react-router-dom';
-import AuthContext from '../context/AuthContext'; // Import the context
-import api from '../api/axiosConfig'; // Import the configured axios instance
+import AuthContext from '../context/AuthContext';
+import api from '../api/axiosConfig';
 
 const Signup = () => {
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const { login } = useContext(AuthContext); // Get the login function to auto-login after signup
+  const { login } = useContext(AuthContext);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-
-    if (!name || !username || !password) {
-      setError('Nama, username, and password wajib diisi.');
-      return;
-    }
-
     try {
-      // The role is hardcoded to 'Agent' for public signup
       const response = await api.post('/signup', { name, username, password, role: 'Agent' });
-      
-      // response.data should contain { token, user }
       const { token, user } = response.data;
-      
-      // Automatically log the user in after successful registration
       login(user, token);
-
     } catch (err) {
-      console.error("Signup error:", err);
       if (err.response && err.response.status === 409) {
         setError('Username sudah digunakan. Silakan pilih yang lain.');
       } else {
@@ -39,56 +26,48 @@ const Signup = () => {
     }
   };
 
+  // Reverted to a simpler structure to match the original look.
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-900">
-      <div className="w-full max-w-md p-8 space-y-8 bg-gray-800 rounded-xl shadow-lg">
-        <div className="text-center">
-          <h1 className="text-4xl font-bold text-white">Buat Akun Baru</h1>
-          <p className="text-gray-400">Selamat datang di CallMon2.0</p>
+    <div style={{ padding: '2rem' }}>
+      <h1 style={{ fontSize: '2rem', fontWeight: 'bold' }}>Buat Akun Baru</h1>
+      <p style={{ marginBottom: '1.5rem' }}>Selamat datang di CallMon2.0</p>
+      <form onSubmit={handleSubmit}>
+        <div style={{ marginBottom: '1rem' }}>
+          <label>Nama Lengkap</label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+            style={{ width: '100%', color: 'black', padding: '0.5rem' }}
+          />
         </div>
-        <form className="space-y-6" onSubmit={handleSubmit}>
-          <div>
-            <label className="block mb-2 text-sm font-medium text-gray-300">Nama Lengkap</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full p-3 bg-gray-700 rounded-lg border border-gray-600 focus:ring-purple-500 focus:border-purple-500 text-white"
-              required
-            />
-          </div>
-          <div>
-            <label className="block mb-2 text-sm font-medium text-gray-300">Username</label>
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="w-full p-3 bg-gray-700 rounded-lg border border-gray-600 focus:ring-purple-500 focus:border-purple-500 text-white"
-              required
-            />
-          </div>
-          <div>
-            <label className="block mb-2 text-sm font-medium text-gray-300">Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full p-3 bg-gray-700 rounded-lg border border-gray-600 focus:ring-purple-500 focus:border-purple-500 text-white"
-              required
-            />
-          </div>
-          {error && <div className="p-3 text-sm text-center text-red-400 bg-red-800 bg-opacity-30 rounded-lg">{error}</div>}
-          <button
-            type="submit"
-            className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-lg transition duration-300 shadow-lg shadow-purple-900/50"
-          >
-            Daftar & Login
-          </button>
-          <div className="text-center text-gray-400">
-            Sudah punya akun? <Link to="/login" className="font-medium text-purple-400 hover:underline">Login di sini</Link>
-          </div>
-        </form>
-      </div>
+        <div style={{ marginBottom: '1rem' }}>
+          <label>Username</label>
+          <input
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            required
+            style={{ width: '100%', color: 'black', padding: '0.5rem' }}
+          />
+        </div>
+        <div style={{ marginBottom: '1rem' }}>
+          <label>Password</label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            style={{ width: '100%', color: 'black', padding: '0.5rem' }}
+          />
+        </div>
+        {error && <p style={{ color: 'red', marginBottom: '1rem' }}>{error}</p>}
+        <button type="submit" style={{ padding: '0.5rem 1rem', cursor: 'pointer' }}>Daftar & Login</button>
+      </form>
+      <p style={{ marginTop: '1rem' }}>
+        Sudah punya akun? <Link to="/login" style={{ color: '#60a5fa' }}>Login di sini</Link>
+      </p>
     </div>
   );
 };
