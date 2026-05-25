@@ -1,6 +1,6 @@
 import React, { useContext } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
-import { AuthProvider, default as AuthContext } from './context/AuthContext'; // Import AuthProvider and AuthContext
+import { AppContextProvider, AppContext } from './context/AppContext';
 
 import MainLayout from './layouts/MainLayout';
 import Login from './pages/Login';
@@ -10,34 +10,57 @@ import InputFinding from './pages/InputFinding';
 import AccountMgmt from './pages/AccountMgmt';
 import TeamMgmt from './pages/TeamMgmt';
 
-// This component will protect routes that require authentication
+// Protect routes that require authentication
 const ProtectedRoute = () => {
-  const { user, loading } = useContext(AuthContext);
+  const { currentUser, isLoading } = useContext(AppContext);
 
-  if (loading) {
-    // You can add a loading spinner here if you want
-    return <div>Loading...</div>; 
+  if (isLoading) {
+    return (
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100vh',
+        background: 'radial-gradient(circle at top, #1e1b4b 0%, #0f172a 100%)',
+        color: '#fff',
+        fontFamily: 'system-ui, sans-serif'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{
+            width: '40px',
+            height: '40px',
+            border: '3px solid rgba(255,255,255,0.1)',
+            borderTopColor: '#6366f1',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto 16px'
+          }}></div>
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+          <p style={{ fontSize: '14px', color: '#94a3b8' }}>Memuat CallMon2.0...</p>
+        </div>
+      </div>
+    );
   }
 
-  return user ? <Outlet /> : <Navigate to="/login" replace />;
+  return currentUser ? <Outlet /> : <Navigate to="/login" replace />;
 };
 
-// This component will redirect logged-in users away from login/signup
+// Redirect logged-in users away from login/signup
 const PublicRoute = () => {
-  const { user, loading } = useContext(AuthContext);
+  const { currentUser, isLoading } = useContext(AppContext);
 
-  if (loading) {
-    return <div>Loading...</div>;
+  if (isLoading) {
+    return null;
   }
 
-  return !user ? <Outlet /> : <Navigate to="/dashboard" replace />;
-}
+  return !currentUser ? <Outlet /> : <Navigate to="/dashboard" replace />;
+};
 
 // Main App Component
 const App = () => {
   return (
     <Router>
-      <AuthProvider> {/* Wrap everything in AuthProvider */}
+      <AppContextProvider>
         <Routes>
           {/* Public routes (Login, Signup) */}
           <Route element={<PublicRoute />}>
@@ -56,10 +79,10 @@ const App = () => {
             </Route>
           </Route>
 
-           {/* Fallback route - if nothing matches, redirect based on auth state */}
-           <Route path="*" element={<Navigate to="/dashboard" />} />
+          {/* Fallback route */}
+          <Route path="*" element={<Navigate to="/dashboard" />} />
         </Routes>
-      </AuthProvider>
+      </AppContextProvider>
     </Router>
   );
 };

@@ -4,6 +4,9 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const User = require('./models/User');
+const Finding = require('./models/Finding');
+const TeamLeader = require('./models/TeamLeader');
+const SDM = require('./models/SDM');
 
 const app = express();
 
@@ -94,4 +97,125 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
+// FINDINGS ENDPOINTS
+app.get('/api/findings', async (req, res) => {
+  try {
+    const findings = await Finding.find({}).sort({ createdAt: -1 });
+    const formatted = findings.map(f => {
+      const obj = f.toObject();
+      obj.id = f._id.toString();
+      return obj;
+    });
+    res.json(formatted);
+  } catch (error) {
+    console.error('[GET FINDINGS ERROR]', error);
+    res.status(500).json({ message: 'Failed to fetch findings' });
+  }
+});
+
+app.post('/api/findings', async (req, res) => {
+  try {
+    const finding = new Finding(req.body);
+    await finding.save();
+    const obj = finding.toObject();
+    obj.id = finding._id.toString();
+    res.status(201).json(obj);
+  } catch (error) {
+    console.error('[POST FINDING ERROR]', error);
+    res.status(500).json({ message: error.message || 'Failed to save finding' });
+  }
+});
+
+// TEAM LEADERS ENDPOINTS
+app.get('/api/team-leaders', async (req, res) => {
+  try {
+    const tls = await TeamLeader.find({});
+    res.json(tls);
+  } catch (error) {
+    console.error('[GET TL ERROR]', error);
+    res.status(500).json({ message: 'Failed to fetch team leaders' });
+  }
+});
+
+app.post('/api/team-leaders', async (req, res) => {
+  try {
+    const { name, nik } = req.body;
+    if (!name || !nik) {
+      return res.status(400).json({ message: 'Name and NIK are required' });
+    }
+    const tl = new TeamLeader({ name, nik });
+    await tl.save();
+    res.status(201).json(tl);
+  } catch (error) {
+    console.error('[POST TL ERROR]', error);
+    res.status(500).json({ message: error.message || 'Failed to create team leader' });
+  }
+});
+
+app.delete('/api/team-leaders/:id', async (req, res) => {
+  try {
+    await TeamLeader.findByIdAndDelete(req.params.id);
+    res.json({ success: true, message: 'Team leader deleted' });
+  } catch (error) {
+    console.error('[DELETE TL ERROR]', error);
+    res.status(500).json({ message: 'Failed to delete team leader' });
+  }
+});
+
+// SDM (AGENT) ENDPOINTS
+app.get('/api/sdm', async (req, res) => {
+  try {
+    const sdmList = await SDM.find({});
+    res.json(sdmList);
+  } catch (error) {
+    console.error('[GET SDM ERROR]', error);
+    res.status(500).json({ message: 'Failed to fetch SDMs' });
+  }
+});
+
+app.post('/api/sdm', async (req, res) => {
+  try {
+    const { name, nik, teamName } = req.body;
+    if (!name || !nik || !teamName) {
+      return res.status(400).json({ message: 'Name, NIK and Team Name are required' });
+    }
+    const sdm = new SDM({ name, nik, teamName });
+    await sdm.save();
+    res.status(201).json(sdm);
+  } catch (error) {
+    console.error('[POST SDM ERROR]', error);
+    res.status(500).json({ message: error.message || 'Failed to create SDM' });
+  }
+});
+
+app.delete('/api/sdm/:id', async (req, res) => {
+  try {
+    await SDM.findByIdAndDelete(req.params.id);
+    res.json({ success: true, message: 'SDM deleted' });
+  } catch (error) {
+    console.error('[DELETE SDM ERROR]', error);
+    res.status(500).json({ message: 'Failed to delete SDM' });
+  }
+});
+
+// DELETE USER ENDPOINT
+app.delete('/api/users/:id', async (req, res) => {
+  try {
+    await User.findByIdAndDelete(req.params.id);
+    res.json({ success: true, message: 'User deleted' });
+  } catch (error) {
+    console.error('[DELETE USER ERROR]', error);
+    res.status(500).json({ message: 'Failed to delete user' });
+  }
+});
+
 module.exports = app;
+
+// Local Development Server Listener
+const PORT = process.env.PORT || 5000;
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+  });
+}
+

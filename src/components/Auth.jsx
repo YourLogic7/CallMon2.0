@@ -3,10 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { AppContext } from '../context/AppContext';
 import { User, Key, UserPlus, LogIn, Award } from 'lucide-react';
 
-export default function Auth() {
+export default function Auth({ defaultIsLogin = true }) {
   const { login, signup } = useContext(AppContext);
   const navigate = useNavigate();
-  const [isLogin, setIsLogin] = useState(true);
+  const [isLogin, setIsLogin] = useState(defaultIsLogin);
   
   // Login Form States
   const [username, setUsername] = useState('');

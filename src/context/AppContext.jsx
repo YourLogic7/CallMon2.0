@@ -1,7 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useState, useEffect } from 'react';
 import { QM_CATEGORIES } from './qmParameters';
-import axios from 'axios'; // Using axios for simplified API calls
+import axios from 'axios';
 
 export const AppContext = createContext();
 
@@ -10,7 +10,7 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('qm_token');
+  const token = localStorage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -26,61 +26,59 @@ export const AppContextProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
 
   useEffect(() => {
-    const checkLoggedIn = async () => {
-      const token = localStorage.getItem('qm_token');
-      if (token) {
-        try {
-          // You might want to have a /api/me endpoint to verify the token and get user data
-          // For now, we'll decode it. But this is not secure if you have sensitive data in payload.
-          const user = JSON.parse(atob(token.split('.')[1])); 
-          
-          // Fake fetch user to simulate real app behavior
-          const res = await api.get(`/users/${user.id}`); // This endpoint does not exist. We need to handle this.
-          setCurrentUser(res.data); 
+    const checkLoggedIn = () => {
+      const storedToken = localStorage.getItem('token');
+      const storedUser = localStorage.getItem('user');
 
+      if (storedToken && storedUser) {
+        try {
+          const parsedUser = JSON.parse(storedUser);
+          setCurrentUser(parsedUser);
+          api.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
         } catch (error) {
-          console.error('Invalid token', error)
-          localStorage.removeItem('qm_token');
+          console.error("Failed to parse user from localStorage", error);
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
         }
       }
       setIsLoading(false);
     };
     checkLoggedIn();
   }, []);
-  
 
   // Fetch other data on mount
   useEffect(() => {
     const fetchData = async () => {
-        try {
-            const [usersRes, findingsRes, tlRes, sdmRes] = await Promise.all([
-                api.get('/users'),
-                api.get('/findings'),
-                api.get('/team-leaders'),
-                api.get('/sdm'),
-            ]);
-            setUsers(usersRes.data);
-            setFindings(findingsRes.data);
-            setTeamLeaders(tlRes.data);
-            setSdmList(sdmRes.data);
-        } catch (err) {
-            console.error('Error initializing data:', err);
-        } finally {
-            setIsLoading(false);
-        }
+      try {
+        const [usersRes, findingsRes, tlRes, sdmRes] = await Promise.all([
+          api.get('/users'),
+          api.get('/findings'),
+          api.get('/team-leaders'),
+          api.get('/sdm'),
+        ]);
+        setUsers(usersRes.data);
+        setFindings(findingsRes.data);
+        setTeamLeaders(tlRes.data);
+        setSdmList(sdmRes.data);
+      } catch (err) {
+        console.error('Error initializing data:', err);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
-    if(currentUser) {
-        fetchData();
+    if (currentUser) {
+      fetchData();
     }
   }, [currentUser]);
-
 
   const login = async (username, password) => {
     try {
       const res = await api.post('/login', { username, password });
-      localStorage.setItem('qm_token', res.data.token);
+      localStorage.setItem('token', res.data.token);
+      localStorage.setItem('user', JSON.stringify(res.data.user));
       setCurrentUser(res.data.user);
+      api.defaults.headers.common['Authorization'] = `Bearer ${res.data.token}`;
       return { success: true };
     } catch (err) {
       return { success: false, message: err.response?.data?.message || 'Login failed' };
@@ -90,19 +88,23 @@ export const AppContextProvider = ({ children }) => {
   const signup = async (name, username, password, role) => {
     try {
       const res = await api.post('/signup', { name, username, password, role });
-      localStorage.setItem('qm_token', res.data.token);
+      localStorage.setItem('token', res.data.token);
+      localStorage.setItem('user', JSON.stringify(res.data.user));
       setCurrentUser(res.data.user);
+      api.defaults.headers.common['Authorization'] = `Bearer ${res.data.token}`;
       return { success: true };
     } catch (err) {
-       return { success: false, message: err.response?.data?.message || 'Signup failed' };
+      return { success: false, message: err.response?.data?.message || 'Signup failed' };
     }
   };
 
   const logout = () => {
-    localStorage.removeItem('qm_token');
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
     setCurrentUser(null);
+    delete api.defaults.headers.common['Authorization'];
   };
-  
+
   const addFinding = async (findingData) => {
     try {
       let totalScore = 0;
@@ -121,13 +123,60 @@ export const AppContextProvider = ({ children }) => {
 
       setFindings(prev => [res.data, ...prev]);
       return res.data;
-      
     } catch (err) {
       console.error('Error adding finding:', err);
     }
   };
 
-  // ... other functions (addTeamLeader, deleteTeamLeader, etc.) should also be converted to use axios
+  const addTeamLeader = async (name, nik) => {
+    try {
+      const res = await api.post('/team-leaders', { name, nik });
+      setTeamLeaders(prev => [...prev, res.data]);
+      return { success: true };
+    } catch (err) {
+      return { success: false, message: err.response?.data?.message || 'Failed to add Team Leader' };
+    }
+  };
+
+  const deleteTeamLeader = async (id) => {
+    try {
+      await api.delete(`/team-leaders/${id}`);
+      setTeamLeaders(prev => prev.filter(tl => tl._id !== id));
+      return { success: true };
+    } catch {
+      return { success: false, message: 'Failed to delete Team Leader' };
+    }
+  };
+
+  const addSDM = async (name, nik, teamName) => {
+    try {
+      const res = await api.post('/sdm', { name, nik, teamName });
+      setSdmList(prev => [...prev, res.data]);
+      return { success: true };
+    } catch (err) {
+      return { success: false, message: err.response?.data?.message || 'Failed to add Agent' };
+    }
+  };
+
+  const deleteSDM = async (id) => {
+    try {
+      await api.delete(`/sdm/${id}`);
+      setSdmList(prev => prev.filter(sdm => sdm._id !== id));
+      return { success: true };
+    } catch {
+      return { success: false, message: 'Failed to delete Agent' };
+    }
+  };
+
+  const deleteUser = async (id) => {
+    try {
+      await api.delete(`/users/${id}`);
+      setUsers(prev => prev.filter(u => u._id !== id));
+      return { success: true };
+    } catch {
+      return { success: false, message: 'Failed to delete user' };
+    }
+  };
 
   return (
     <AppContext.Provider
@@ -142,7 +191,11 @@ export const AppContextProvider = ({ children }) => {
         signup,
         logout,
         addFinding,
-        // ... other functions
+        addTeamLeader,
+        deleteTeamLeader,
+        addSDM,
+        deleteSDM,
+        deleteUser
       }}
     >
       {children}
