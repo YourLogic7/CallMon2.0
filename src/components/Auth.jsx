@@ -20,11 +20,14 @@ export default function Auth() {
   
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleLoginSubmit = (e) => {
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    const result = login(username, password);
+    setLoading(true);
+    const result = await login(username, password);
+    setLoading(false);
     if (result.success) {
       navigate('/dashboard');
     } else {
@@ -32,14 +35,16 @@ export default function Auth() {
     }
   };
 
-  const handleSignupSubmit = (e) => {
+  const handleSignupSubmit = async (e) => {
     e.preventDefault();
     setError('');
     if (!name || !regUsername || !regPassword) {
       setError('Semua kolom wajib diisi!');
       return;
     }
-    const result = signup(name, regUsername, regPassword, regRole);
+    setLoading(true);
+    const result = await signup(name, regUsername, regPassword, regRole);
+    setLoading(false);
     if (result.success) {
       setSuccessMsg('Pendaftaran berhasil! Mengalihkan...');
       setTimeout(() => {
@@ -83,6 +88,7 @@ export default function Auth() {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   required
+                  disabled={loading}
                 />
               </div>
 
@@ -98,11 +104,12 @@ export default function Auth() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  disabled={loading}
                 />
               </div>
 
-              <button type="submit" className="btn-primary" style={styles.submitBtn}>
-                <LogIn size={18} /> Masuk ke Dashboard
+              <button type="submit" className="btn-primary" style={styles.submitBtn} disabled={loading}>
+                 {loading ? 'Memproses...' : <><LogIn size={18} /> Masuk ke Dashboard</>}
               </button>
 
               <p style={styles.toggleText}>
@@ -114,7 +121,7 @@ export default function Auth() {
             </form>
           ) : (
             <form onSubmit={handleSignupSubmit} style={styles.form}>
-              <div className="form-group">
+               <div className="form-group">
                 <label className="form-label" htmlFor="regName">Nama Lengkap</label>
                 <input
                   id="regName"
@@ -124,6 +131,7 @@ export default function Auth() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
+                  disabled={loading}
                 />
               </div>
 
@@ -137,6 +145,7 @@ export default function Auth() {
                   value={regUsername}
                   onChange={(e) => setRegUsername(e.target.value)}
                   required
+                  disabled={loading}
                 />
               </div>
 
@@ -150,6 +159,7 @@ export default function Auth() {
                   value={regPassword}
                   onChange={(e) => setRegPassword(e.target.value)}
                   required
+                  disabled={loading}
                 />
               </div>
 
@@ -161,7 +171,7 @@ export default function Auth() {
                   value={regRole}
                   onChange={(e) => setRegRole(e.target.value)}
                   style={styles.select}
-                >
+                  disabled={loading}>
                   <option value="Agent">Agent (Lihat Nilai Sendiri)</option>
                   <option value="QC">QC (Input Finding + Dashboard)</option>
                   <option value="TL">TL (Input Finding + Dashboard)</option>
@@ -169,8 +179,8 @@ export default function Auth() {
                 </select>
               </div>
 
-              <button type="submit" className="btn-primary" style={styles.submitBtn}>
-                <UserPlus size={18} /> Daftar Sekarang
+              <button type="submit" className="btn-primary" style={styles.submitBtn} disabled={loading}>
+                {loading ? 'Mendaftar...' : <><UserPlus size={18} /> Daftar Sekarang</>}
               </button>
 
               <p style={styles.toggleText}>
@@ -293,7 +303,7 @@ const styles = {
     fontWeight: '600',
     textDecoration: 'underline',
   },
-  errorAlert: {
+   errorAlert: {
     background: 'rgba(239, 68, 68, 0.15)',
     border: '1px solid rgba(239, 68, 68, 0.3)',
     color: '#f87171',

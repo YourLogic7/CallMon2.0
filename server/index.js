@@ -1,6 +1,8 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
 const Finding = require('./models/Finding');
@@ -25,6 +27,47 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Backend server is running' });
 });
 
+// --- AUTHENTICATION ---
+app.post('/api/signup', async (req, res) => {
+  try {
+    const { name, username, password, role } = req.body;
+    const newUser = new User({ name, username, password, role });
+    const savedUser = await newUser.save();
+
+    const token = jwt.sign({ id: savedUser._id, role: savedUser.role }, process.env.JWT_SECRET, {
+      expiresIn: '1h',
+    });
+
+    res.status(201).json({ token, user: savedUser });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+app.post('/api/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    const user = await User.findOne({ username });
+    if (!user) {
+      return res.status(400).json({ message: 'Invalid credentials' });
+    }
+
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      return res.status(400).json({ message: 'Invalid credentials' });
+    }
+
+    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
+      expiresIn: '1h',
+    });
+
+    res.json({ token, user });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+
 // --- API Users (Account Management) ---
 app.get('/api/users', async (req, res) => {
   try {
@@ -32,16 +75,6 @@ app.get('/api/users', async (req, res) => {
     res.json(users);
   } catch (err) {
     res.status(500).json({ message: err.message });
-  }
-});
-
-app.post('/api/users', async (req, res) => {
-  try {
-    const newUser = new User(req.body);
-    const savedUser = await newUser.save();
-    res.status(201).json(savedUser);
-  } catch (err) {
-    res.status(400).json({ message: err.message });
   }
 });
 
