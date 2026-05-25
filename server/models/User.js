@@ -8,19 +8,14 @@ const userSchema = new mongoose.Schema({
   role: { type: String, enum: ['superadmin', 'QC', 'TL', 'Agent'], default: 'Agent' }
 }, { timestamps: true });
 
-// REWRITTEN with async/await for maximum reliability
-userSchema.pre('save', async function(next) {
-  // Only hash the password if it has been modified (or is new)
+// CORRECTED ASYNC/AWAIT IMPLEMENTATION
+userSchema.pre('save', async function() {
   if (!this.isModified('password')) {
-    return next();
+    return; // Exit if password hasn't changed
   }
-  try {
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
-    next();
-  } catch (error) {
-    next(error);
-  }
+  // No try/catch needed, Mongoose handles promise rejections
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
 });
 
 // Method to compare password for login
