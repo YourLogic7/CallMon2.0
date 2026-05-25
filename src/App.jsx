@@ -1,50 +1,67 @@
-import { useContext } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AppContextProvider, AppContext } from './context/AppContext';
-import Auth from './components/Auth';
-import Sidebar from './components/Sidebar';
-import Dashboard from './components/Dashboard';
-import InputFinding from './components/InputFinding';
-import AccountManagement from './components/AccountManagement';
-import TeamManagement from './components/TeamManagement';
+import React, { useContext } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { AuthProvider, default as AuthContext } from './context/AuthContext'; // Import AuthProvider and AuthContext
 
-function AppContent() {
-  const { currentUser } = useContext(AppContext);
+import MainLayout from './layouts/MainLayout';
+import Login from './pages/Login';
+import Signup from './pages/Signup';
+import Dashboard from './pages/Dashboard';
+import InputFinding from './pages/InputFinding';
+import AccountMgmt from './pages/AccountMgmt';
+import TeamMgmt from './pages/TeamMgmt';
 
-  if (!currentUser) {
-    return (
-      <Routes>
-        <Route path="/login" element={<Auth />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
-    );
+// This component will protect routes that require authentication
+const ProtectedRoute = () => {
+  const { user, loading } = useContext(AuthContext);
+
+  if (loading) {
+    // You can add a loading spinner here if you want
+    return <div>Loading...</div>; 
   }
 
-  return (
-    <div className="app-container">
-      {/* Sidebar Navigation */}
-      <Sidebar />
+  return user ? <Outlet /> : <Navigate to="/login" replace />;
+};
 
-      {/* Main Pages */}
-      <Routes>
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/input-finding" element={<InputFinding />} />
-        <Route path="/sdm/accounts" element={<AccountManagement />} />
-        <Route path="/sdm/teams" element={<TeamManagement />} />
-        <Route path="/login" element={<Navigate to="/dashboard" replace />} />
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
-      </Routes>
-    </div>
-  );
+// This component will redirect logged-in users away from login/signup
+const PublicRoute = () => {
+  const { user, loading } = useContext(AuthContext);
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  return !user ? <Outlet /> : <Navigate to="/dashboard" replace />;
 }
 
-export default function App() {
+// Main App Component
+const App = () => {
   return (
-    <AppContextProvider>
-      <BrowserRouter>
-        <AppContent />
-      </BrowserRouter>
-    </AppContextProvider>
+    <Router>
+      <AuthProvider> {/* Wrap everything in AuthProvider */}
+        <Routes>
+          {/* Public routes (Login, Signup) */}
+          <Route element={<PublicRoute />}>
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+          </Route>
+
+          {/* Protected routes (Dashboard and everything else) */}
+          <Route element={<ProtectedRoute />}>
+            <Route path="/" element={<MainLayout />}>
+              <Route index element={<Navigate to="/dashboard" replace />} />
+              <Route path="dashboard" element={<Dashboard />} />
+              <Route path="input-finding" element={<InputFinding />} />
+              <Route path="account-mgmt" element={<AccountMgmt />} />
+              <Route path="team-mgmt" element={<TeamMgmt />} />
+            </Route>
+          </Route>
+
+           {/* Fallback route - if nothing matches, redirect based on auth state */}
+           <Route path="*" element={<Navigate to="/dashboard" />} />
+        </Routes>
+      </AuthProvider>
+    </Router>
   );
-}
+};
+
+export default App;

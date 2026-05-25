@@ -1,10 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api/axiosConfig'; // Import the configured axios instance
 import { ShieldCheck, UserCircle, Trash, Pencil } from 'lucide-react';
-
-const API_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://callmon-rev.vercel.app' 
-  : 'http://localhost:3001';
 
 const AccountManagement = () => {
   const [users, setUsers] = useState([]);
@@ -17,15 +13,15 @@ const AccountManagement = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
-  // Fetch users when component mounts
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const response = await axios.get(`${API_URL}/api/users`);
+        // The token is now automatically included by the axios instance
+        const response = await api.get('/users'); 
         setUsers(response.data);
       } catch (err) {
         console.error("Error fetching users:", err);
-        setError('Gagal memuat daftar pengguna.');
+        setError('Gagal memuat daftar pengguna. Sesi Anda mungkin telah berakhir.');
       }
     };
     fetchUsers();
@@ -47,11 +43,10 @@ const AccountManagement = () => {
     }
 
     try {
-      const response = await axios.post(`${API_URL}/api/signup`, formData);
-      // Add the new user to the state to update the list instantly
+      // Using the configured api instance for the signup POST request
+      const response = await api.post('/signup', formData);
       setUsers([...users, response.data]);
       setSuccess('Akun baru berhasil dibuat!');
-      // Reset form
       setFormData({ name: '', username: '', password: '', role: 'Agent' });
     } catch (err) {
       console.error("Error creating user:", err);
@@ -59,10 +54,9 @@ const AccountManagement = () => {
     }
   };
   
-  // Dummy delete function - will be implemented later
   const handleDeleteUser = (userId) => {
     console.log("Delete user:", userId);
-    // setUsers(users.filter(user => user._id !== userId));
+    // To be implemented
   }
 
   return (
@@ -71,11 +65,10 @@ const AccountManagement = () => {
       <p className="text-gray-400 mb-10">Kelola akses pengguna dan privilege sistem CallMon2.0</p>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Form Section */}
         <div className="bg-gray-800 p-8 rounded-xl shadow-2xl">
           <h2 className="text-xl font-semibold mb-6 flex items-center"><UserCircle className="mr-3" /> Tambah Akun Baru</h2>
-          
           <form onSubmit={handleFormSubmit} className="space-y-6">
+            {/* Form inputs remain the same */}
             <div>
               <label className="block mb-2 text-sm font-medium text-gray-300">Nama Lengkap</label>
               <input type="text" name="name" value={formData.name} onChange={handleInputChange} className="w-full p-3 bg-gray-700 rounded-lg border border-gray-600 focus:ring-purple-500 focus:border-purple-500" />
@@ -105,7 +98,6 @@ const AccountManagement = () => {
           </form>
         </div>
 
-        {/* User List Section */}
         <div className="bg-gray-800 p-8 rounded-xl shadow-2xl">
           <h2 className="text-xl font-semibold mb-6 flex items-center"><ShieldCheck className="mr-3" /> Daftar Akun Terdaftar</h2>
           <div className="space-y-4">

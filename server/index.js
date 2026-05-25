@@ -26,7 +26,6 @@ mongoose.connect(process.env.MONGODB_URI)
 // GET All Users
 app.get('/api/users', async (req, res) => {
   try {
-    // We select only the fields we need, excluding the password hash
     const users = await User.find({}).select('name username role createdAt');
     res.json(users);
   } catch (error) {
@@ -35,7 +34,7 @@ app.get('/api/users', async (req, res) => {
   }
 });
 
-// Signup
+// Signup (This also generates a token, let's update it too for consistency)
 app.post('/api/signup', async (req, res) => {
   try {
     const { name, username, password, role } = req.body;
@@ -52,16 +51,13 @@ app.post('/api/signup', async (req, res) => {
     const user = new User({ name, username, password, role });
     await user.save();
 
-    // Return the newly created user (excluding password) to be added to the list instantly
-    const createdUser = {
-      _id: user._id,
-      name: user.name,
-      username: user.username,
-      role: user.role,
-      createdAt: user.createdAt
-    };
+    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '5h' }); // <-- CHANGED TO 5h
 
-    res.status(201).json(createdUser);
+    // Signup now also returns a token and user object, just like login
+    res.status(201).json({ 
+      token,
+      user: { id: user._id, name: user.name, username: user.username, role: user.role }
+    });
 
   } catch (error) {
     console.error('[SIGNUP ERROR]', error);
@@ -85,7 +81,7 @@ app.post('/api/login', async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
+    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '5h' }); // <-- CHANGED TO 5h
 
     res.json({ 
       token, 
