@@ -1,7 +1,7 @@
 import { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppContext } from '../context/AppContext';
-import { Shield, User, Key, UserPlus, LogIn, Award } from 'lucide-react';
+import { User, Key, UserPlus, LogIn, Award } from 'lucide-react';
 
 export default function Auth() {
   const { login, signup } = useContext(AppContext);
@@ -48,21 +48,6 @@ export default function Auth() {
     } else {
       setError(result.message);
     }
-  };
-
-  const triggerQuickLogin = (demoUser, demoPass) => {
-    setUsername(demoUser);
-    setPassword(demoPass);
-    setIsLogin(true);
-    setError('');
-    
-    // Auto-login with a brief animation delay
-    setTimeout(() => {
-      const result = login(demoUser, demoPass);
-      if (result.success) {
-        navigate('/dashboard');
-      }
-    }, 300);
   };
 
   return (
@@ -197,47 +182,6 @@ export default function Auth() {
             </form>
           )}
         </div>
-
-        {/* Quick Demo Login Box */}
-        <div className="glass-card" style={styles.demoCard}>
-          <h3 style={styles.demoTitle}>
-            <Shield size={18} style={{ marginRight: '6px' }} /> Demo Quick Login
-          </h3>
-          <p style={styles.demoDesc}>Pilih salah satu peran di bawah untuk login instan & menguji dashboard:</p>
-          <div style={styles.demoGrid}>
-            <button
-              onClick={() => triggerQuickLogin('superadmin', 'admin123')}
-              style={{ ...styles.demoBtn, borderLeft: '4px solid #a855f7' }}
-            >
-              <div style={styles.demoRole}>Superadmin</div>
-              <div style={styles.demoCred}>User: superadmin</div>
-            </button>
-            
-            <button
-              onClick={() => triggerQuickLogin('qc1', 'qc123')}
-              style={{ ...styles.demoBtn, borderLeft: '4px solid #10b981' }}
-            >
-              <div style={styles.demoRole}>Quality Control (QC)</div>
-              <div style={styles.demoCred}>User: qc1</div>
-            </button>
-
-            <button
-              onClick={() => triggerQuickLogin('tl1', 'tl123')}
-              style={{ ...styles.demoBtn, borderLeft: '4px solid #f59e0b' }}
-            >
-              <div style={styles.demoRole}>Team Leader (TL)</div>
-              <div style={styles.demoCred}>User: tl1</div>
-            </button>
-
-            <button
-              onClick={() => triggerQuickLogin('agent1', 'agent123')}
-              style={{ ...styles.demoBtn, borderLeft: '4px solid #3b82f6' }}
-            >
-              <div style={styles.demoRole}>Agent (Andi)</div>
-              <div style={styles.demoCred}>User: agent1</div>
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );
@@ -368,46 +312,5 @@ const styles = {
     fontSize: '14px',
     marginBottom: '20px',
     textAlign: 'center',
-  },
-  demoCard: {
-    padding: '20px',
-    border: '1px solid rgba(255, 255, 255, 0.05)',
-  },
-  demoTitle: {
-    fontSize: '15px',
-    fontWeight: '600',
-    marginBottom: '6px',
-    display: 'flex',
-    alignItems: 'center',
-  },
-  demoDesc: {
-    fontSize: '12px',
-    color: 'var(--text-muted)',
-    marginBottom: '14px',
-  },
-  demoGrid: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: '10px',
-  },
-  demoBtn: {
-    background: 'rgba(15, 23, 42, 0.4)',
-    border: '1px solid var(--card-border)',
-    borderRadius: '8px',
-    padding: '8px 12px',
-    cursor: 'pointer',
-    textAlign: 'left',
-    color: 'var(--text-main)',
-    transition: 'all 0.2s ease',
-  },
-  demoRole: {
-    fontSize: '11px',
-    fontWeight: '700',
-    color: 'var(--text-heading)',
-  },
-  demoCred: {
-    fontSize: '10px',
-    color: 'var(--text-muted)',
-    marginTop: '2px',
   },
 };

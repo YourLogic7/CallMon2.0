@@ -20,26 +20,13 @@ export const AppContextProvider = ({ children }) => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [usersRes, findingsRes, tlsRes, sdmRes] = await Promise.all([
-          fetch('/api/users'),
-          fetch('/api/findings'),
-          fetch('/api/team-leaders'),
-          fetch('/api/sdm')
-        ]);
-
-        const [usersData, findingsData, tlsData, sdmData] = await Promise.all([
-          usersRes.json(),
-          findingsRes.json(),
-          tlsRes.json(),
-          sdmRes.json()
-        ]);
-
-        setUsers(usersData);
-        setFindings(findingsData);
-        setTeamLeaders(tlsData);
-        setSdmList(sdmData);
+        // Instead of fetching from dummy files, we now start with empty arrays
+        setUsers([]);
+        setFindings([]);
+        setTeamLeaders([]);
+        setSdmList([]);
       } catch (err) {
-        console.error('Error fetching data:', err);
+        console.error('Error initializing data:', err);
       } finally {
         setIsLoading(false);
       }
@@ -77,6 +64,8 @@ export const AppContextProvider = ({ children }) => {
       if (res.ok) {
         const newUser = await res.json();
         setUsers(prev => [newUser, ...prev]);
+        // Automatically log in the user after signup
+        setCurrentUser(newUser);
         return { success: true, user: newUser };
       } else {
         const error = await res.json();
