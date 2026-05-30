@@ -2,6 +2,8 @@ import { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppContext } from '../context/AppContext';
 import { User, Key, LogIn, Award, Eye, EyeOff } from 'lucide-react';
+import logoGue from '/home/user/callmon20/src/assets/C4logo.png'; 
+
 
 export default function Auth({ defaultIsLogin = true }) {
   const { login } = useContext(AppContext);
@@ -38,8 +40,12 @@ export default function Auth({ defaultIsLogin = true }) {
       <div style={styles.cardWrapper}>
         <div className="glass-card" style={styles.authCard}>
           <div style={styles.header}>
-            <div style={styles.logoCircle}>
-              <Award size={36} color="#6366f1" />
+            <div style={styles.logo}>
+              <img 
+                src={logoGue} 
+                alt="Logo CallMon2.0" 
+                style={{ width: '100px', height: '100px', objectFit: 'contain' }} 
+              />
             </div>
             <h1 style={styles.title}>CallMon2.0</h1>
             <p style={styles.subtitle}>Quality Monitoring (QM) Score Monitoring Tool</p>
