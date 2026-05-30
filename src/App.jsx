@@ -86,7 +86,7 @@ const App = () => {
               <Route path="dashboard" element={<Dashboard />} />
               
               {/* Restricted routes */}
-              <Route element={<RoleProtectedRoute allowedRoles={['superadmin', 'QC']} />}>
+              <Route element={<RoleProtectedRoute allowedRoles={['superadmin', 'QC', 'TL']} />}>
                 <Route path="input-finding" element={<InputFinding />} />
               </Route>
               
@@ -94,7 +94,7 @@ const App = () => {
                 <Route path="tindak-lanjut" element={<TindakLanjut />} />
               </Route>
 
-              <Route element={<RoleProtectedRoute allowedRoles={['superadmin']} />}>
+              <Route element={<RoleProtectedRoute allowedRoles={['superadmin', 'QC', 'TL']} />}>
                 <Route path="account-mgmt" element={<AccountMgmt />} />
                 <Route path="team-mgmt" element={<TeamMgmt />} />
               </Route>

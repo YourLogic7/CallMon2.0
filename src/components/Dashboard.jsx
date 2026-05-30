@@ -163,32 +163,30 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {!isAgentRole && (
-        <div className="glass-card filter-card" style={styles.filterCard}>
-          <div style={styles.cardHeader}><Filter size={16} /><span>Filter Pemantauan</span></div>
-          <div className="filter-grid" style={styles.filterGrid}>
-            <div className="form-group">
-              <label className="form-label">Agent</label>
-              <select className="form-input" value={effectiveAgent} onChange={(e) => setSelectedAgent(e.target.value)} disabled={isAgentRole}>
-                {uniqueAgents.map(a => <option key={a} value={a}>{a === 'All' ? 'Semua Agent' : a}</option>)}
-              </select>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Bulan</label>
-              <select className="form-input" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)}>
-                {months.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-              </select>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Search</label>
-              <div style={{ position: 'relative' }}>
-                <Search size={14} style={{ position: 'absolute', left: '10px', top: '12px', color: 'var(--text-muted)' }} />
-                <input type="text" className="form-input" style={{ paddingLeft: '32px' }} placeholder="ID, Agent, MSISDN..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-              </div>
+      <div className="glass-card filter-card" style={styles.filterCard}>
+        <div style={styles.cardHeader}><Filter size={16} /><span>Filter Pemantauan</span></div>
+        <div className="filter-grid" style={styles.filterGrid}>
+          <div className="form-group">
+            <label className="form-label">Agent</label>
+            <select className="form-input" value={effectiveAgent} onChange={(e) => setSelectedAgent(e.target.value)} disabled={isAgentRole}>
+              {uniqueAgents.map(a => <option key={a} value={a}>{a === 'All' ? 'Semua Agent' : a}</option>)}
+            </select>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Bulan</label>
+            <select className="form-input" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)}>
+              {months.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+            </select>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Search</label>
+            <div style={{ position: 'relative' }}>
+              <Search size={14} style={{ position: 'absolute', left: '10px', top: '12px', color: 'var(--text-muted)' }} />
+              <input type="text" className="form-input" style={{ paddingLeft: '32px' }} placeholder="ID, Agent, MSISDN..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
             </div>
           </div>
         </div>
-      )}
+      </div>
 
       {/* Table Card */}
       <div className="glass-card table-card" style={{ marginTop: '24px' }}>

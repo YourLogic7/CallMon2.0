@@ -67,7 +67,7 @@ export default function Sidebar() {
   if (!currentUser) return null;
 
   const canManageSdm = ['superadmin', 'QC', 'TL'].includes(currentUser.role);
-  const canInputFinding = ['superadmin', 'QC'].includes(currentUser.role);
+  const canInputFinding = ['superadmin', 'QC', 'TL'].includes(currentUser.role);
   const canTindakLanjut = ['superadmin', 'QC', 'TL'].includes(currentUser.role);
 
   return (
