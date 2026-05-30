@@ -1,25 +1,18 @@
 import { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppContext } from '../context/AppContext';
-import { User, Key, UserPlus, LogIn, Award } from 'lucide-react';
+import { User, Key, LogIn, Award } from 'lucide-react';
 
 export default function Auth({ defaultIsLogin = true }) {
-  const { login, signup } = useContext(AppContext);
+  const { login } = useContext(AppContext);
   const navigate = useNavigate();
-  const [isLogin, setIsLogin] = useState(defaultIsLogin);
+  const [isLogin] = useState(defaultIsLogin);
   
   // Login Form States
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   
-  // Signup Form States
-  const [name, setName] = useState('');
-  const [regUsername, setRegUsername] = useState('');
-  const [regPassword, setRegPassword] = useState('');
-  const [regRole, setRegRole] = useState('Agent');
-  
   const [error, setError] = useState('');
-  const [successMsg, setSuccessMsg] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleLoginSubmit = async (e) => {
@@ -30,26 +23,6 @@ export default function Auth({ defaultIsLogin = true }) {
     setLoading(false);
     if (result.success) {
       navigate('/dashboard');
-    } else {
-      setError(result.message);
-    }
-  };
-
-  const handleSignupSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    if (!name || !regUsername || !regPassword) {
-      setError('Semua kolom wajib diisi!');
-      return;
-    }
-    setLoading(true);
-    const result = await signup(name, regUsername, regPassword, regRole);
-    setLoading(false);
-    if (result.success) {
-      setSuccessMsg('Pendaftaran berhasil! Mengalihkan...');
-      setTimeout(() => {
-        navigate('/dashboard');
-      }, 1500);
     } else {
       setError(result.message);
     }
@@ -72,9 +45,8 @@ export default function Auth({ defaultIsLogin = true }) {
           </div>
 
           {error && <div style={styles.errorAlert}>{error}</div>}
-          {successMsg && <div style={styles.successAlert}>{successMsg}</div>}
 
-          {isLogin ? (
+          {isLogin && (
             <form onSubmit={handleLoginSubmit} style={styles.form}>
               <div className="form-group">
                 <label className="form-label" htmlFor="username">
@@ -111,84 +83,6 @@ export default function Auth({ defaultIsLogin = true }) {
               <button type="submit" className="btn-primary" style={styles.submitBtn} disabled={loading}>
                  {loading ? 'Memproses...' : <><LogIn size={18} /> Masuk ke Dashboard</>}
               </button>
-
-              <p style={styles.toggleText}>
-                Belum punya akun?{' '}
-                <span onClick={() => { setIsLogin(false); setError(''); }} style={styles.toggleLink}>
-                  Daftar di sini
-                </span>
-              </p>
-            </form>
-          ) : (
-            <form onSubmit={handleSignupSubmit} style={styles.form}>
-               <div className="form-group">
-                <label className="form-label" htmlFor="regName">Nama Lengkap</label>
-                <input
-                  id="regName"
-                  className="form-input"
-                  type="text"
-                  placeholder="Nama Lengkap"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                  disabled={loading}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label" htmlFor="regUser">Username</label>
-                <input
-                  id="regUser"
-                  className="form-input"
-                  type="text"
-                  placeholder="Username unik"
-                  value={regUsername}
-                  onChange={(e) => setRegUsername(e.target.value)}
-                  required
-                  disabled={loading}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label" htmlFor="regPass">Password</label>
-                <input
-                  id="regPass"
-                  className="form-input"
-                  type="password"
-                  placeholder="Minimal 6 karakter"
-                  value={regPassword}
-                  onChange={(e) => setRegPassword(e.target.value)}
-                  required
-                  disabled={loading}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label" htmlFor="regRole">Role Privilege</label>
-                <select
-                  id="regRole"
-                  className="form-input"
-                  value={regRole}
-                  onChange={(e) => setRegRole(e.target.value)}
-                  style={styles.select}
-                  disabled={loading}>
-                  <option value="Agent">Agent (Lihat Nilai Sendiri)</option>
-                  <option value="QC">QC (Input Finding + Dashboard)</option>
-                  <option value="TL">TL (Input Finding + Dashboard)</option>
-                  <option value="superadmin">Superadmin (Akses Penuh)</option>
-                </select>
-              </div>
-
-              <button type="submit" className="btn-primary" style={styles.submitBtn} disabled={loading}>
-                {loading ? 'Mendaftar...' : <><UserPlus size={18} /> Daftar Sekarang</>}
-              </button>
-
-              <p style={styles.toggleText}>
-                Sudah punya akun?{' '}
-                <span onClick={() => { setIsLogin(true); setError(''); }} style={styles.toggleLink}>
-                  Login di sini
-                </span>
-              </p>
             </form>
           )}
         </div>
@@ -278,45 +172,14 @@ const styles = {
     alignItems: 'center',
     gap: '6px',
   },
-  select: {
-    cursor: 'pointer',
-    appearance: 'none',
-    backgroundImage: `url("data:image/svg+xml;utf8,<svg fill='white' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>")`,
-    backgroundRepeat: 'no-repeat',
-    backgroundPosition: 'right 12px center',
-    backgroundSize: '16px',
-    paddingRight: '40px',
-  },
   submitBtn: {
     marginTop: '12px',
     width: '100%',
-  },
-  toggleText: {
-    textAlign: 'center',
-    fontSize: '14px',
-    color: 'var(--text-muted)',
-    marginTop: '16px',
-  },
-  toggleLink: {
-    color: '#818cf8',
-    cursor: 'pointer',
-    fontWeight: '600',
-    textDecoration: 'underline',
   },
    errorAlert: {
     background: 'rgba(239, 68, 68, 0.15)',
     border: '1px solid rgba(239, 68, 68, 0.3)',
     color: '#f87171',
-    borderRadius: '8px',
-    padding: '12px',
-    fontSize: '14px',
-    marginBottom: '20px',
-    textAlign: 'center',
-  },
-  successAlert: {
-    background: 'rgba(16, 185, 129, 0.15)',
-    border: '1px solid rgba(16, 185, 129, 0.3)',
-    color: '#34d399',
     borderRadius: '8px',
     padding: '12px',
     fontSize: '14px',

@@ -118,6 +118,7 @@ export const AppContextProvider = ({ children }) => {
       const res = await api.post('/findings', {
         ...findingData,
         auditorName: currentUser ? currentUser.name : 'System Auditor',
+        auditorRole: currentUser ? currentUser.role : 'QC',
         score: totalScore
       });
 
@@ -125,7 +126,7 @@ export const AppContextProvider = ({ children }) => {
       return res.data;
     } catch (err) {
       console.error('Error adding finding:', err);
-      throw err; // Rethrow to let the component handle it
+      throw err;
     }
   };
 
@@ -136,6 +137,16 @@ export const AppContextProvider = ({ children }) => {
       return { success: true };
     } catch (err) {
       return { success: false, message: err.response?.data?.message || 'Failed to add Team Leader' };
+    }
+  };
+
+  const addTeamLeadersBatch = async (data) => {
+    try {
+      const res = await api.post('/team-leaders/batch', data);
+      setTeamLeaders(prev => [...prev, ...res.data]);
+      return { success: true };
+    } catch (err) {
+      return { success: false, message: err.response?.data?.message || 'Failed to add Team Leaders batch' };
     }
   };
 
@@ -159,6 +170,16 @@ export const AppContextProvider = ({ children }) => {
     }
   };
 
+  const addSdmBatch = async (data) => {
+    try {
+      const res = await api.post('/sdm/batch', data);
+      setSdmList(prev => [...prev, ...res.data]);
+      return { success: true };
+    } catch (err) {
+      return { success: false, message: err.response?.data?.message || 'Failed to add SDM batch' };
+    }
+  };
+
   const deleteSDM = async (id) => {
     try {
       await api.delete(`/sdm/${id}`);
@@ -179,33 +200,13 @@ export const AppContextProvider = ({ children }) => {
     }
   };
 
-  const addUsersBatch = async (usersData) => {
+  const addUsersBatch = async (data) => {
     try {
-      const res = await api.post('/users/batch', usersData);
+      const res = await api.post('/users/batch', data);
       setUsers(prev => [...prev, ...res.data]);
       return { success: true };
     } catch (err) {
-      return { success: false, message: err.response?.data?.message || 'Failed to add users in batch' };
-    }
-  };
-
-  const addTeamLeadersBatch = async (data) => {
-    try {
-      const res = await api.post('/team-leaders/batch', data);
-      setTeamLeaders(prev => [...prev, ...res.data]);
-      return { success: true };
-    } catch (err) {
-      return { success: false, message: err.response?.data?.message || 'Failed to add Team Leaders in batch' };
-    }
-  };
-
-  const addSdmBatch = async (data) => {
-    try {
-      const res = await api.post('/sdm/batch', data);
-      setSdmList(prev => [...prev, ...res.data]);
-      return { success: true };
-    } catch (err) {
-      return { success: false, message: err.response?.data?.message || 'Failed to add Agents in batch' };
+      return { success: false, message: err.response?.data?.message || 'Failed to add users batch' };
     }
   };
 
@@ -247,13 +248,13 @@ export const AppContextProvider = ({ children }) => {
         deleteFinding,
         updateFinding,
         addTeamLeader,
+        addTeamLeadersBatch,
         deleteTeamLeader,
         addSDM,
+        addSdmBatch,
         deleteSDM,
         deleteUser,
-        addUsersBatch,
-        addTeamLeadersBatch,
-        addSdmBatch
+        addUsersBatch
       }}
     >
       {children}

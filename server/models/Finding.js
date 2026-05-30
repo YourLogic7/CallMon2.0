@@ -13,9 +13,19 @@ const FindingSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  auditorRole: {
+    type: String,
+    enum: ['superadmin', 'QC', 'TL'],
+    default: 'QC'
+  },
   date: {
     type: String,
     required: true
+  },
+  week: {
+    type: String,
+    enum: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+    default: 'Week 1'
   },
   score: {
     type: Number,
@@ -72,4 +82,3 @@ FindingSchema.pre('save', function() {
 });
 
 module.exports = mongoose.model('Finding', FindingSchema);
-

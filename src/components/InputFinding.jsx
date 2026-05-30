@@ -25,6 +25,7 @@ export default function InputFinding() {
 
   const [selectedAgent, setSelectedAgent] = useState('');
   const [auditDate, setAuditDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [selectedWeek, setSelectedWeek] = useState('Week 1');
 
   const [msisdn, setMsisdn] = useState('');
   const [noTiket, setNoTiket] = useState('');
@@ -81,6 +82,7 @@ export default function InputFinding() {
     try {
       const result = await addFinding({ 
         date: auditDate, 
+        week: selectedWeek,
         agentName: effectiveAgent, 
         paramScores, 
         failedSubParams, 
@@ -137,7 +139,7 @@ export default function InputFinding() {
           <form onSubmit={handleSubmit} id="qmsForm">
             {/* Metadata Audit */}
             <div className="glass-card" style={{ marginBottom: '20px' }}>
-              <div style={styles.grid2} className="grid-2">
+              <div style={styles.grid3} className="grid-3">
                 <div className="form-group">
                   <label className="form-label"><User size={12} /> Agent</label>
                   <select className="form-input" value={effectiveAgent} onChange={(e) => setSelectedAgent(e.target.value)} required>
@@ -147,6 +149,15 @@ export default function InputFinding() {
                 <div className="form-group">
                   <label className="form-label"><Calendar size={12} /> Tgl Audit</label>
                   <input type="date" className="form-input" value={auditDate} onChange={(e) => setAuditDate(e.target.value)} required />
+                </div>
+                <div className="form-group">
+                  <label className="form-label"><Clock size={12} /> Periode (Week)</label>
+                  <select className="form-input" value={selectedWeek} onChange={(e) => setSelectedWeek(e.target.value)} required>
+                    <option value="Week 1">Week 1</option>
+                    <option value="Week 2">Week 2</option>
+                    <option value="Week 3">Week 3</option>
+                    <option value="Week 4">Week 4</option>
+                  </select>
                 </div>
               </div>
             </div>
@@ -200,7 +211,7 @@ export default function InputFinding() {
                 <label className="form-label"><MessageSquare size={12} /> Catatan Auditor</label>
                 <textarea className="form-input" rows="4" value={notes} onChange={e => setNotes(e.target.value)} required placeholder="Rincian feedback..."></textarea>
               </div>
-              <button type="submit" className="btn-primary" style={{ width: '100%', marginTop: '16px' }}>Submit Audit</button>
+              <button type="submit" className="btn-primary" style={{ width: '100%', marginTop: '16px' }} disabled={isSubmitting}>{isSubmitting ? 'Memproses...' : 'Submit Audit'}</button>
             </div>
           </form>
         </div>
@@ -247,7 +258,8 @@ const styles = {
   subList: { marginTop: '10px', background: 'rgba(239, 68, 68, 0.05)', padding: '12px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '8px' },
   subItem: { display: 'flex', gap: '8px', cursor: 'pointer', alignItems: 'flex-start' },
   secTitle: { fontSize: '14px', fontWeight: '700', marginBottom: '16px', color: 'var(--primary)' },
-  successCard: { background: 'rgba(16, 185, 129, 0.15)', border: '1px solid var(--success)', padding: '16px', marginBottom: '24px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '12px' }
+  successCard: { background: 'rgba(16, 185, 129, 0.15)', border: '1px solid var(--success)', padding: '16px', marginBottom: '24px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '12px' },
+  errorCard: { background: 'rgba(239, 68, 68, 0.15)', border: '1px solid var(--danger)', padding: '16px', marginBottom: '24px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '12px' }
 };
 
 // Global Responsive Overrides
