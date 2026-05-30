@@ -179,7 +179,7 @@ export default function TeamManagement() {
                 <input type="text" className="form-input" placeholder="Otomatis terisi" value={tlForm.name} readOnly style={{ background: 'rgba(255,255,255,0.05)' }} />
               </div>
             </div>
-            <button type="submit" className="btn-primary" style={{ marginTop: '10px', height: '42px' }}>
+            <button type="submit" className="btn-primary" style={{ marginTop: '4px', height: '42px' }}>
               <Plus size={18} style={{ marginRight: '8px' }} /> Tambah Team Leader
             </button>
           </form>
@@ -235,15 +235,15 @@ export default function TeamManagement() {
                 <input type="text" className="form-input" placeholder="Otomatis terisi" value={sdmForm.name} readOnly style={{ background: 'rgba(255,255,255,0.05)' }} />
               </div>
             </div>
-            <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
-              <div className="form-group" style={{ flex: 1 }}>
+            <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-end', width: '100%' }}>
+              <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
                 <label className="form-label" style={{ fontSize: '11px' }}>Pilih Team Leader</label>
                 <select className="form-input" value={sdmForm.teamName} onChange={e => setSdmForm({ ...sdmForm, teamName: e.target.value })} required>
                   <option value="">Pilih TL...</option>
                   {teamLeaders.map(tl => <option key={tl.nik} value={tl.name}>{tl.name}</option>)}
                 </select>
               </div>
-              <button type="submit" className="btn-primary" style={{ height: '42px', padding: '0 20px' }}>Tambah Agent</button>
+              <button type="submit" className="btn-primary" style={{ height: '42px', padding: '0 24px', flexShrink: 0 }}>Tambah Agent</button>
             </div>
           </form>
 
