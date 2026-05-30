@@ -1,11 +1,15 @@
-import { useState, useContext, useEffect } from 'react';
+import { useState, useContext, useEffect, useRef } from 'react';
 import { AppContext } from '../context/AppContext';
-import { Users, Trash2, UserCheck, Plus, ShieldCheck, Contact } from 'lucide-react';
+import { Users, Trash2, UserCheck, Plus, ShieldCheck, Contact, Upload } from 'lucide-react';
+import Papa from 'papaparse';
 
 export default function TeamManagement() {
-  const { teamLeaders, sdmList, addTeamLeader, deleteTeamLeader, addSDM, deleteSDM } = useContext(AppContext);
+  const { teamLeaders, sdmList, addTeamLeader, deleteTeamLeader, addSDM, deleteSDM, addTeamLeadersBatch, addSdmBatch } = useContext(AppContext);
   const [tlForm, setTlForm] = useState({ name: '', nik: '' });
   const [sdmForm, setSdmForm] = useState({ name: '', nik: '', teamName: '' });
+  
+  const tlFileInputRef = useRef(null);
+  const sdmFileInputRef = useRef(null);
 
   useEffect(() => {
     if (teamLeaders.length > 0 && sdmForm.teamName === '') {
@@ -29,6 +33,44 @@ export default function TeamManagement() {
     setSdmForm({ ...sdmForm, name: '', nik: '' });
   };
 
+  const handleTlFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: async (results) => {
+          const res = await addTeamLeadersBatch(results.data);
+          if (res.success) {
+            alert(`Berhasil mengimpor ${results.data.length} Team Leader!`);
+          } else {
+            alert(res.message);
+          }
+          e.target.value = null;
+        }
+      });
+    }
+  };
+
+  const handleSdmFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: async (results) => {
+          const res = await addSdmBatch(results.data);
+          if (res.success) {
+            alert(`Berhasil mengimpor ${results.data.length} SDM!`);
+          } else {
+            alert(res.message);
+          }
+          e.target.value = null;
+        }
+      });
+    }
+  };
+
   return (
     <div className="main-content">
       <div style={styles.header}>
@@ -41,8 +83,18 @@ export default function TeamManagement() {
         <div style={styles.section}>
           <div className="glass-card" style={styles.card}>
             <div style={styles.cardHeader}>
-              <UserCheck size={18} color="var(--primary)" />
-              <h3 style={styles.cardTitle}>Kelola Team Leader</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <UserCheck size={18} color="var(--primary)" />
+                  <h3 style={styles.cardTitle}>Kelola Team Leader</h3>
+                </div>
+                <div>
+                  <input type="file" accept=".csv" ref={tlFileInputRef} style={{ display: 'none' }} onChange={handleTlFileUpload} />
+                  <button className="btn-primary" style={{ padding: '6px 10px', fontSize: '11px', background: 'var(--success)', display: 'flex', alignItems: 'center', gap: '4px' }} onClick={() => tlFileInputRef.current.click()}>
+                    <Upload size={12} /> Import
+                  </button>
+                </div>
+              </div>
             </div>
             
             <form onSubmit={handleTlSubmit} style={styles.formRow}>
@@ -89,8 +141,18 @@ export default function TeamManagement() {
         <div style={{ ...styles.section, flex: '1.4' }}>
           <div className="glass-card" style={styles.card}>
             <div style={styles.cardHeader}>
-              <Users size={18} color="var(--primary)" />
-              <h3 style={styles.cardTitle}>Kelola SDM (Agents)</h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <Users size={18} color="var(--primary)" />
+                  <h3 style={styles.cardTitle}>Kelola SDM (Agents)</h3>
+                </div>
+                <div>
+                  <input type="file" accept=".csv" ref={sdmFileInputRef} style={{ display: 'none' }} onChange={handleSdmFileUpload} />
+                  <button className="btn-primary" style={{ padding: '6px 10px', fontSize: '11px', background: 'var(--success)', display: 'flex', alignItems: 'center', gap: '4px' }} onClick={() => sdmFileInputRef.current.click()}>
+                    <Upload size={12} /> Import
+                  </button>
+                </div>
+              </div>
             </div>
             
             <form onSubmit={handleSdmSubmit} style={styles.gridForm}>

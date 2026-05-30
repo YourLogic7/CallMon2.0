@@ -1,6 +1,7 @@
 import { useContext, useState, useMemo } from 'react';
 import { AppContext } from '../context/AppContext';
 import { QM_CATEGORIES } from '../context/qmParameters';
+import * as XLSX from 'xlsx';
 import { 
   TrendingUp, 
   Award, 
@@ -10,14 +11,7 @@ import {
   RefreshCw,
   Eye,
   Trash2,
-  Clock,
-  Ticket,
-  Calendar,
-  Hash,
-  User,
-  AlertTriangle,
-  ChevronDown,
-  ChevronUp
+  Download
 } from 'lucide-react';
 
 export default function Dashboard() {
@@ -41,11 +35,7 @@ export default function Dashboard() {
   const effectiveAgent = isAgentRole ? currentUser.name : selectedAgent;
 
   const uniqueAgents = useMemo(() => ['All', ...new Set(findings.map(f => f.agentName))], [findings]);
-  const uniqueYears = useMemo(() => ['All', ...new Set(findings.map(f => {
-    const d = new Date(f.date);
-    return isNaN(d.getTime()) ? 'Unknown' : d.getFullYear().toString();
-  }))].sort(), [findings]);
-
+  
   const months = [
     { value: 'All', label: 'Semua Bulan' }, { value: '0', label: 'Jan' }, { value: '1', label: 'Feb' },
     { value: '2', label: 'Mar' }, { value: '3', label: 'Apr' }, { value: '4', label: 'Mei' },
@@ -59,17 +49,13 @@ export default function Dashboard() {
 
   const filteredFindings = useMemo(() => {
     return findings.filter((audit) => {
-      // Filter by username for Agent role
       if (isAgentRole && audit.agentUsername !== currentUser.username) return false;
-      
       if (!isAgentRole && selectedAgent !== 'All' && audit.agentName !== selectedAgent) return false;
-      
       const auditDate = new Date(audit.date);
       if (startDate && new Date(startDate) > auditDate) return false;
       if (endDate && new Date(endDate) < auditDate) return false;
       if (selectedMonth !== 'All' && auditDate.getMonth().toString() !== selectedMonth) return false;
       if (selectedYear !== 'All' && auditDate.getFullYear().toString() !== selectedYear) return false;
-      
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
         const auditId = (audit.id || audit._id || '').toString().toLowerCase();
@@ -135,6 +121,53 @@ export default function Dashboard() {
     return <span className="badge badge-danger">{score}%</span>;
   };
 
+  const handleExportExcel = () => {
+    const exportData = filteredFindings.map(f => ({
+      ID: f.id || f._id,
+      Tanggal: f.date,
+      Agent: f.agentName,
+      Skor: f.score,
+      MSISDN: f.msisdn || '',
+      NoTiket: f.noTiket || '',
+      Auditor: f.auditorName || '',
+      ValidasiTL: f.hasilValidasiTL || '',
+      Improvement: f.improvement || '',
+      Pembinaan: f.pembinaan || '',
+      Notes: f.notes || ''
+    }));
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Findings");
+    XLSX.writeFile(wb, `Findings_Export_${new Date().toISOString().slice(0,10)}.xlsx`);
+  };
+
+  const handleExportCSV = () => {
+    const exportData = filteredFindings.map(f => ({
+      ID: f.id || f._id,
+      Tanggal: f.date,
+      Agent: f.agentName,
+      Skor: f.score,
+      MSISDN: f.msisdn || '',
+      NoTiket: f.noTiket || '',
+      Auditor: f.auditorName || '',
+      ValidasiTL: f.hasilValidasiTL || '',
+      Improvement: f.improvement || '',
+      Pembinaan: f.pembinaan || '',
+      Notes: f.notes || ''
+    }));
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const csv = XLSX.utils.sheet_to_csv(ws);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Findings_Export_${new Date().toISOString().slice(0,10)}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="main-content">
       <div className="header-row" style={styles.headerRow}>
@@ -142,9 +175,17 @@ export default function Dashboard() {
           <h2 style={styles.title}>QM Performance</h2>
           <p style={styles.subtitle}>Ringkasan performa audit agent.</p>
         </div>
-        <button onClick={handleResetFilters} className="btn-primary" style={styles.resetBtn}>
-          <RefreshCw size={14} /> Reset
-        </button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button onClick={handleExportExcel} className="btn-primary" style={{ ...styles.resetBtn, background: 'var(--success)' }}>
+            <Download size={14} /> Excel
+          </button>
+          <button onClick={handleExportCSV} className="btn-primary" style={{ ...styles.resetBtn, background: 'var(--secondary)' }}>
+            <Download size={14} /> CSV
+          </button>
+          <button onClick={handleResetFilters} className="btn-primary" style={styles.resetBtn}>
+            <RefreshCw size={14} /> Reset
+          </button>
+        </div>
       </div>
 
       {/* KPI Cards */}

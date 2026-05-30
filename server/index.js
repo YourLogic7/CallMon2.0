@@ -274,6 +274,49 @@ app.delete('/api/users/:id', async (req, res) => {
   }
 });
 
+// BATCH ENDPOINTS
+app.post('/api/users/batch', async (req, res) => {
+  try {
+    const usersData = req.body;
+    if (!Array.isArray(usersData)) return res.status(400).json({ message: 'Payload must be an array' });
+    
+    const results = [];
+    for (const u of usersData) {
+      const user = new User(u);
+      await user.save();
+      results.push({ id: user._id, name: user.name, username: user.username, role: user.role });
+    }
+    res.status(201).json(results);
+  } catch (error) {
+    console.error('[BATCH USERS ERROR]', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+app.post('/api/team-leaders/batch', async (req, res) => {
+  try {
+    const data = req.body;
+    if (!Array.isArray(data)) return res.status(400).json({ message: 'Payload must be an array' });
+    const tls = await TeamLeader.insertMany(data);
+    res.status(201).json(tls);
+  } catch (error) {
+    console.error('[BATCH TL ERROR]', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+app.post('/api/sdm/batch', async (req, res) => {
+  try {
+    const data = req.body;
+    if (!Array.isArray(data)) return res.status(400).json({ message: 'Payload must be an array' });
+    const sdm = await SDM.insertMany(data);
+    res.status(201).json(sdm);
+  } catch (error) {
+    console.error('[BATCH SDM ERROR]', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
 module.exports = app;
 
 // Local Development Server Listener

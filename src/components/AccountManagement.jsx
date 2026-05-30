@@ -1,11 +1,13 @@
-import { useState, useContext } from 'react';
+import { useState, useContext, useRef } from 'react';
 import { AppContext } from '../context/AppContext';
-import { UserPlus, Trash2, Shield, UserCog, User } from 'lucide-react';
+import { UserPlus, Trash2, Shield, UserCog, User, Upload } from 'lucide-react';
+import Papa from 'papaparse';
 
 export default function AccountManagement() {
-  const { users, signup, deleteUser, currentUser } = useContext(AppContext);
+  const { users, signup, deleteUser, currentUser, addUsersBatch } = useContext(AppContext);
   const [formData, setFormData] = useState({ name: '', username: '', password: '', role: 'Agent' });
   const [status, setStatus] = useState({ type: '', message: '' });
+  const fileInputRef = useRef(null);
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
@@ -24,11 +26,55 @@ export default function AccountManagement() {
     if (window.confirm(`Hapus akun @${username}?`)) await deleteUser(id);
   };
 
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: async (results) => {
+          const res = await addUsersBatch(results.data);
+          if (res.success) {
+            setStatus({ type: 'success', message: `Berhasil mengimpor ${results.data.length} akun!` });
+          } else {
+            setStatus({ type: 'error', message: res.message });
+          }
+          setTimeout(() => setStatus({ type: '', message: '' }), 3000);
+          e.target.value = null;
+        },
+        error: (err) => {
+          setStatus({ type: 'error', message: 'Gagal membaca file CSV: ' + err.message });
+          setTimeout(() => setStatus({ type: '', message: '' }), 3000);
+        }
+      });
+    }
+  };
+
   return (
     <div className="main-content">
       <div style={styles.header}>
-        <h2 style={styles.title}>Account Management</h2>
-        <p style={styles.subtitle}>Kelola akses pengguna dan privilege sistem CallMon2.0</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h2 style={styles.title}>Account Management</h2>
+            <p style={styles.subtitle}>Kelola akses pengguna dan privilege sistem CallMon2.0</p>
+          </div>
+          <div>
+            <input
+              type="file"
+              accept=".csv"
+              ref={fileInputRef}
+              style={{ display: 'none' }}
+              onChange={handleFileUpload}
+            />
+            <button 
+              className="btn-primary" 
+              style={{ background: 'var(--success)', display: 'flex', alignItems: 'center', gap: '8px' }}
+              onClick={() => fileInputRef.current.click()}
+            >
+              <Upload size={16} /> Import CSV
+            </button>
+          </div>
+        </div>
       </div>
 
       <div className="account-layout" style={styles.layout}>
