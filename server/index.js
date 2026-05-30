@@ -191,6 +191,16 @@ app.put('/api/findings/:id', async (req, res) => {
   }
 });
 
+app.delete('/api/findings/:id', async (req, res) => {
+  try {
+    await Finding.findByIdAndDelete(req.params.id);
+    res.json({ success: true, message: 'Finding deleted' });
+  } catch (error) {
+    console.error('[DELETE FINDING ERROR]', error);
+    res.status(500).json({ message: 'Failed to delete finding' });
+  }
+});
+
 // TEAM LEADERS ENDPOINTS
 app.get('/api/team-leaders', async (req, res) => {
   try {
