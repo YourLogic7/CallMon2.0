@@ -26,7 +26,9 @@ import {
   Trash2,
   Download,
   Calendar,
-  Clock
+  Clock,
+  CheckCircle,
+  AlertCircle
 } from 'lucide-react';
 
 export default function Dashboard() {
@@ -169,12 +171,15 @@ export default function Dashboard() {
         Score: f.score,
         Auditor: f.auditorName,
         Role: f.auditorRole,
+        StatusTL: f.pembinaan ? 'Selesai' : 'Pending',
+        ValidasiTL: f.hasilValidasiTL || '-',
+        Improvement: f.improvement || '-',
+        Pembinaan: f.pembinaan || '-',
         MSISDN: f.msisdn || '-',
         NoTiket: f.noTiket || '-',
         Notes: f.notes || ''
       };
 
-      // Add individual parameter scores
       QM_CATEGORIES.forEach(cat => {
         cat.parameters.forEach(p => {
           baseData[`${p.id}. ${p.name}`] = (f.paramScores || {})[p.id] === 1 ? 1 : 0;
@@ -188,40 +193,6 @@ export default function Dashboard() {
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Findings");
     XLSX.writeFile(workbook, `QM_Report_${new Date().toISOString().split('T')[0]}.xlsx`);
-  };
-
-  const handleExportCSV = () => {
-    const data = filteredFindings.map(f => {
-      const baseData = {
-        ID: (f.id || f._id || '').toString(),
-        Tanggal: f.date,
-        Week: f.week || '-',
-        Agent: f.agentName,
-        Score: f.score,
-        Auditor: f.auditorName,
-        Notes: f.notes || ''
-      };
-
-      QM_CATEGORIES.forEach(cat => {
-        cat.parameters.forEach(p => {
-          baseData[`${p.id}. ${p.name}`] = (f.paramScores || {})[p.id] === 1 ? 1 : 0;
-        });
-      });
-
-      return baseData;
-    });
-
-    const ws = XLSX.utils.json_to_sheet(data);
-    const csv = XLSX.utils.sheet_to_csv(ws);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute("download", `Findings_Export_${new Date().toISOString().slice(0,10)}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
   };
 
   const handleDelete = async (id) => {
@@ -363,7 +334,7 @@ export default function Dashboard() {
                 <th>Week</th>
                 <th onClick={() => handleSort('agentName')} style={{ cursor: 'pointer' }}>Agent</th>
                 <th>Skor QMS</th>
-                <th>Auditor</th>
+                <th>Status TL</th>
                 <th>Aksi</th>
               </tr>
             </thead>
@@ -381,8 +352,15 @@ export default function Dashboard() {
                       </div>
                     </td>
                     <td>
-                      <div style={{ fontSize: '12px' }}>{audit.auditorName}</div>
-                      <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{audit.auditorRole}</div>
+                      {audit.pembinaan ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--success)', fontSize: '11px', fontWeight: '600' }}>
+                          <CheckCircle size={12} /> Selesai
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--warning)', fontSize: '11px', fontWeight: '600' }}>
+                          <AlertCircle size={12} /> Pending
+                        </div>
+                      )}
                     </td>
                     <td>
                       <div style={{ display: 'flex', gap: '8px' }}>
@@ -460,27 +438,26 @@ export default function Dashboard() {
                 </p>
               </div>
 
-              {(selectedAudit.hasilValidasiTL || selectedAudit.improvement || selectedAudit.pembinaan) && (
-                <div style={{ marginTop: '20px', borderTop: '1px solid var(--border-light)', paddingTop: '16px' }}>
-                  <h4 style={styles.secTitle}>Hasil Tindak Lanjut TL:</h4>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '12px', background: 'rgba(99, 102, 241, 0.05)', padding: '12px', borderRadius: '10px' }}>
-                    <div>
-                      <strong style={{ color: 'var(--primary)' }}>Validasi:</strong>
-                      <p style={{ marginTop: '4px' }}>{selectedAudit.hasilValidasiTL || '-'}</p>
-                    </div>
-                    <div>
-                      <strong style={{ color: 'var(--primary)' }}>Improvement:</strong>
-                      <p style={{ marginTop: '4px' }}>{selectedAudit.improvement || '-'}</p>
-                    </div>
-                    <div>
-                      <strong style={{ color: 'var(--primary)' }}>Pembinaan:</strong>
-                      <div style={{ marginTop: '4px' }}>
-                        {selectedAudit.pembinaan ? <span className="badge badge-primary">{selectedAudit.pembinaan}</span> : '-'}
-                      </div>
+              {/* Follow-up Details */}
+              <div style={{ marginTop: '20px', borderTop: '1px solid var(--border-light)', paddingTop: '16px' }}>
+                <h4 style={styles.secTitle}>Hasil Tindak Lanjut TL:</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '12px', background: 'rgba(99, 102, 241, 0.05)', padding: '12px', borderRadius: '10px' }}>
+                  <div>
+                    <strong style={{ color: 'var(--primary)' }}>Validasi:</strong>
+                    <p style={{ marginTop: '4px' }}>{selectedAudit.hasilValidasiTL || '-'}</p>
+                  </div>
+                  <div>
+                    <strong style={{ color: 'var(--primary)' }}>Improvement:</strong>
+                    <p style={{ marginTop: '4px' }}>{selectedAudit.improvement || '-'}</p>
+                  </div>
+                  <div>
+                    <strong style={{ color: 'var(--primary)' }}>Pembinaan:</strong>
+                    <div style={{ marginTop: '4px' }}>
+                      {selectedAudit.pembinaan ? <span className="badge badge-primary">{selectedAudit.pembinaan}</span> : <span className="badge badge-warning">Belum Dilakukan</span>}
                     </div>
                   </div>
                 </div>
-              )}
+              </div>
             </div>
           </div>
         </div>

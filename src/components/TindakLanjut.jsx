@@ -25,7 +25,6 @@ export default function TindakLanjut() {
   const [selectedAuditId, setSelectedAuditId] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
 
-  // Form state for follow-up
   const [followUpData, setFollowUpData] = useState({
     hasilValidasiTL: '',
     improvement: '',
@@ -40,13 +39,14 @@ export default function TindakLanjut() {
   const isTL = currentUser?.role === 'TL';
   const isQC = currentUser?.role === 'QC';
   const isSuperadmin = currentUser?.role === 'superadmin';
+  const canEdit = isTL || isSuperadmin;
 
   const filteredFindings = useMemo(() => {
     return findings.filter((audit) => {
-      // Filter by Team for TL
+      // Logic: TL can ONLY see findings for their own team
+      // QC and Superadmin can see ALL teams
       if (isTL && audit.teamName !== currentUser.name) return false;
       
-      // Filter by Agent name if selected
       if (selectedAgent !== 'All' && audit.agentName !== selectedAgent) return false;
       
       if (searchQuery) {
@@ -134,11 +134,12 @@ export default function TindakLanjut() {
       <div className="header-row" style={styles.headerRow}>
         <div style={{ flex: 1 }}>
           <h2 style={styles.title}>Tindak Lanjut Finding</h2>
-          <p style={styles.subtitle}>Kelola dan tindak lanjuti temuan audit agent.</p>
+          <p style={styles.subtitle}>
+            {isTL ? `Kelola temuan untuk Team ${currentUser.name}` : 'Monitor tindak lanjuti temuan audit agent.'}
+          </p>
         </div>
       </div>
 
-      {/* Filter Card */}
       <div className="glass-card filter-card" style={styles.filterCard}>
         <div style={styles.cardHeader}><Filter size={16} /><span>Filter Temuan</span></div>
         <div className="filter-grid" style={styles.filterGrid}>
@@ -158,7 +159,6 @@ export default function TindakLanjut() {
         </div>
       </div>
 
-      {/* Table Card */}
       <div className="glass-card table-card" style={{ marginTop: '24px' }}>
         <div className="table-container">
           <table>
@@ -190,7 +190,9 @@ export default function TindakLanjut() {
                     <td>
                       <div style={{ display: 'flex', gap: '8px' }}>
                         <button onClick={() => handleViewDetails(audit)} className="btn-primary" style={{ padding: '6px 10px', fontSize: '12px' }} title="Lihat Detail"><Eye size={12} /></button>
-                        <button onClick={() => handleEdit(audit)} className="btn-primary" style={{ padding: '6px 10px', fontSize: '12px', background: 'var(--secondary)' }} title="Tindak Lanjut"><Edit3 size={12} /></button>
+                        {canEdit && (
+                          <button onClick={() => handleEdit(audit)} className="btn-primary" style={{ padding: '6px 10px', fontSize: '12px', background: 'var(--secondary)' }} title="Tindak Lanjut"><Edit3 size={12} /></button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -206,7 +208,6 @@ export default function TindakLanjut() {
         </div>
       </div>
 
-      {/* Modal Detail / Edit */}
       {selectedAudit && (
         <div style={styles.modalOverlay} onClick={() => setSelectedAuditId(null)}>
           <div className="glass-card modal-card" style={styles.modalCard} onClick={e => e.stopPropagation()}>
@@ -216,56 +217,15 @@ export default function TindakLanjut() {
             </div>
             
             <div style={styles.modalBody}>
-              {/* Common Details (from Dashboard) */}
               <div className="modal-meta-grid" style={styles.modalMetaGrid}>
                 <div className="meta-item"><strong>Agent:</strong> {selectedAudit.agentName}</div>
                 <div className="meta-item"><strong>Score:</strong> {selectedAudit.score}%</div>
                 <div className="meta-item"><strong>MSISDN:</strong> {selectedAudit.msisdn || '-'}</div>
                 <div className="meta-item"><strong>Tiket:</strong> {selectedAudit.noTiket || '-'}</div>
-                <div className="meta-item"><strong>Auditor:</strong> {selectedAudit.auditorName || '-'}</div>
+                <div className="meta-item"><strong>Auditor:</strong> {selectedAudit.auditorName} ({selectedAudit.auditorRole})</div>
                 <div className="meta-item"><strong>Tanggal:</strong> {selectedAudit.date}</div>
               </div>
 
-              <div style={{ marginTop: '20px' }}>
-                <h4 style={styles.secTitle}>Hasil Parameter:</h4>
-                <div style={styles.paramGrid}>
-                  {QM_CATEGORIES.map(cat => (
-                    <div key={cat.id} style={{ marginBottom: '12px' }}>
-                      <div style={{ fontSize: '12px', fontWeight: '700', marginBottom: '6px', color: 'var(--primary)', borderBottom: '1px solid var(--border-light)' }}>
-                        {cat.name}
-                      </div>
-                      {cat.parameters.map(p => {
-                        const isSuccess = (selectedAudit.paramScores || {})[p.id] === 1;
-                        const failedSubs = (selectedAudit.failedSubParams || {})[p.id] || [];
-                        return (
-                          <div key={p.id} style={{ marginBottom: '4px', fontSize: '11px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                              <span style={{ color: isSuccess ? 'var(--success)' : 'var(--danger)', fontWeight: '500' }}>
-                                {isSuccess ? '✓' : '✗'} {p.name}
-                              </span>
-                              <span>{isSuccess ? p.weight : 0}/{p.weight}</span>
-                            </div>
-                            {!isSuccess && failedSubs.length > 0 && (
-                              <div style={{ paddingLeft: '14px', color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '10px' }}>
-                                {failedSubs.map(idx => p.subParams[idx]).join(', ')}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div style={{ marginTop: '20px' }}>
-                <h4 style={styles.secTitle}>Catatan Auditor:</h4>
-                <p style={{ fontSize: '12px', color: 'var(--text-muted)', fontStyle: 'italic', background: 'rgba(255,255,255,0.05)', padding: '10px', borderRadius: '8px' }}>
-                  {selectedAudit.notes || 'Tidak ada catatan.'}
-                </p>
-              </div>
-
-              {/* Follow-up Form */}
               <div style={{ marginTop: '24px', borderTop: '1px solid var(--border-light)', paddingTop: '20px' }}>
                 <h4 style={{ ...styles.secTitle, display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <ClipboardList size={16} /> Form Tindak Lanjut TL
