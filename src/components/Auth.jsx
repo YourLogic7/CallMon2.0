@@ -1,7 +1,7 @@
 import { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppContext } from '../context/AppContext';
-import { User, Key, LogIn, Award } from 'lucide-react';
+import { User, Key, LogIn, Award, Eye, EyeOff } from 'lucide-react';
 
 export default function Auth({ defaultIsLogin = true }) {
   const { login } = useContext(AppContext);
@@ -11,6 +11,7 @@ export default function Auth({ defaultIsLogin = true }) {
   // Login Form States
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -68,16 +69,26 @@ export default function Auth({ defaultIsLogin = true }) {
                 <label className="form-label" htmlFor="password">
                   <span style={styles.labelSpan}><Key size={16} /> Password</span>
                 </label>
-                <input
-                  id="password"
-                  className="form-input"
-                  type="password"
-                  placeholder="Masukkan password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  disabled={loading}
-                />
+                <div style={{ position: 'relative' }}>
+                  <input
+                    id="password"
+                    className="form-input"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Masukkan password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    disabled={loading}
+                    style={{ paddingRight: '40px' }}
+                  />
+                  <button 
+                    type="button" 
+                    onClick={() => setShowPassword(!showPassword)} 
+                    style={styles.toggleBtn}
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
               </div>
 
               <button type="submit" className="btn-primary" style={styles.submitBtn} disabled={loading}>
@@ -186,4 +197,16 @@ const styles = {
     marginBottom: '20px',
     textAlign: 'center',
   },
+  toggleBtn: {
+    position: 'absolute',
+    right: '10px',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    background: 'none',
+    border: 'none',
+    color: 'var(--text-muted)',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center'
+  }
 };

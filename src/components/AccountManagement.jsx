@@ -1,24 +1,56 @@
 import { useState, useContext, useRef } from 'react';
 import { AppContext } from '../context/AppContext';
-import { UserPlus, Trash2, Shield, UserCog, User, Upload } from 'lucide-react';
+import { UserPlus, Trash2, Shield, UserCog, User, Upload, Eye, EyeOff, Edit3, X, Save } from 'lucide-react';
 import Papa from 'papaparse';
 
 export default function AccountManagement() {
-  const { users, signup, deleteUser, currentUser, addUsersBatch } = useContext(AppContext);
+  const { users, registerByAdmin, deleteUser, currentUser, addUsersBatch, updateUser } = useContext(AppContext);
   const [formData, setFormData] = useState({ name: '', username: '', password: '', role: 'Agent' });
   const [status, setStatus] = useState({ type: '', message: '' });
+  const [showPassword, setShowPassword] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
   const fileInputRef = useRef(null);
+
+  const isAuthorized = ['superadmin', 'TL'].includes(currentUser?.role);
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const res = await signup(formData.name, formData.username, formData.password, formData.role);
-    if (res.success) {
-      setStatus({ type: 'success', message: 'Akun berhasil ditambahkan!' });
-      setFormData({ name: '', username: '', password: '', role: 'Agent' });
-    } else setStatus({ type: 'error', message: res.message || 'Gagal menambahkan akun.' });
+    
+    if (editingUser) {
+      const res = await updateUser(editingUser._id || editingUser.id, formData);
+      if (res.success) {
+        setStatus({ type: 'success', message: 'Akun berhasil diperbarui!' });
+        handleCancelEdit();
+      } else {
+        setStatus({ type: 'error', message: res.message || 'Gagal memperbarui akun.' });
+      }
+    } else {
+      const res = await registerByAdmin(formData.name, formData.username, formData.password, formData.role);
+      if (res.success) {
+        setStatus({ type: 'success', message: 'Akun berhasil ditambahkan!' });
+        setFormData({ name: '', username: '', password: '', role: 'Agent' });
+      } else {
+        setStatus({ type: 'error', message: res.message || 'Gagal menambahkan akun.' });
+      }
+    }
     setTimeout(() => setStatus({ type: '', message: '' }), 3000);
+  };
+
+  const handleEdit = (user) => {
+    setEditingUser(user);
+    setFormData({
+      name: user.name,
+      username: user.username,
+      password: '', // Leave empty for security, only update if typed
+      role: user.role
+    });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingUser(null);
+    setFormData({ name: '', username: '', password: '', role: 'Agent' });
   };
 
   const handleDelete = async (id, username) => {
@@ -81,8 +113,8 @@ export default function AccountManagement() {
         {/* Form Section */}
         <div className="glass-card" style={styles.formCard}>
           <div style={styles.cardHeader}>
-            <UserPlus size={18} color="var(--primary)" />
-            <h3 style={styles.cardTitle}>Tambah Akun Baru</h3>
+            {editingUser ? <Edit3 size={18} color="var(--secondary)" /> : <UserPlus size={18} color="var(--primary)" />}
+            <h3 style={styles.cardTitle}>{editingUser ? 'Edit Akun' : 'Tambah Akun Baru'}</h3>
           </div>
           
           <form onSubmit={handleSubmit}>
@@ -98,7 +130,24 @@ export default function AccountManagement() {
               </div>
               <div className="form-group">
                 <label className="form-label">Password</label>
-                <input type="password" name="password" className="form-input" value={formData.password} onChange={handleChange} placeholder="******" required />
+                <div style={{ position: 'relative' }}>
+                  <input 
+                    type={showPassword ? "text" : "password"} 
+                    name="password" 
+                    className="form-input" 
+                    value={formData.password} 
+                    onChange={handleChange} 
+                    placeholder={editingUser ? "(Kosongkan jika tidak ubah)" : "******"} 
+                    required={!editingUser} 
+                  />
+                  <button 
+                    type="button" 
+                    onClick={() => setShowPassword(!showPassword)} 
+                    style={styles.toggleBtn}
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -112,9 +161,16 @@ export default function AccountManagement() {
               </select>
             </div>
 
-            <button type="submit" className="btn-primary" style={styles.submitBtn}>
-              <UserCog size={16} /> Buat Akun Baru
-            </button>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button type="submit" className="btn-primary" style={styles.submitBtn}>
+                {editingUser ? <><Save size={16} /> Simpan Perubahan</> : <><UserCog size={16} /> Buat Akun Baru</>}
+              </button>
+              {editingUser && (
+                <button type="button" onClick={handleCancelEdit} className="btn-primary" style={{ ...styles.submitBtn, background: 'var(--danger)' }}>
+                  <X size={16} /> Batal
+                </button>
+              )}
+            </div>
             
             {status.message && (
               <div style={{ 
@@ -151,7 +207,7 @@ export default function AccountManagement() {
               </thead>
               <tbody>
                 {users.map(u => (
-                  <tr key={u._id} style={styles.tr}>
+                  <tr key={u._id || u.id} style={styles.tr}>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <div style={styles.avatarMini}><User size={14} /></div>
@@ -167,13 +223,24 @@ export default function AccountManagement() {
                       </span>
                     </td>
                     <td style={{ textAlign: 'right' }}>
-                      <button 
-                        onClick={() => handleDelete(u._id, u.username)} 
-                        style={styles.delBtn}
-                        title="Hapus Akun"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                        {isAuthorized && (
+                          <button 
+                            onClick={() => handleEdit(u)} 
+                            style={{ ...styles.actionBtn, color: 'var(--secondary)' }}
+                            title="Edit Akun"
+                          >
+                            <Edit3 size={16} />
+                          </button>
+                        )}
+                        <button 
+                          onClick={() => handleDelete(u._id || u.id, u.username)} 
+                          style={{ ...styles.actionBtn, color: 'var(--danger)' }}
+                          title="Hapus Akun"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -196,9 +263,10 @@ const styles = {
   cardHeader: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '24px', borderBottom: '1px solid var(--border-light)', paddingBottom: '12px' },
   cardTitle: { fontSize: '16px', fontWeight: '700' },
   grid2: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' },
-  submitBtn: { width: '100%', marginTop: '12px' },
+  submitBtn: { flex: 1, marginTop: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' },
   table: { width: '100%' },
   tr: { transition: 'background 0.2s' },
   avatarMini: { width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(99, 102, 241, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' },
-  delBtn: { background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', opacity: 0.6, padding: '8px', borderRadius: '6px', transition: '0.2s' }
+  actionBtn: { background: 'none', border: 'none', cursor: 'pointer', opacity: 0.6, padding: '8px', borderRadius: '6px', transition: '0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  toggleBtn: { position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center' }
 };

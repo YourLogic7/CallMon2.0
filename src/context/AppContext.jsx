@@ -98,6 +98,27 @@ export const AppContextProvider = ({ children }) => {
     }
   };
 
+  const registerByAdmin = async (name, username, password, role) => {
+    try {
+      const res = await api.post('/signup', { name, username, password, role });
+      // Important: We DON'T set currentUser here to avoid auto-login
+      setUsers(prev => [...prev, res.data.user]);
+      return { success: true };
+    } catch (err) {
+      return { success: false, message: err.response?.data?.message || 'Registration failed' };
+    }
+  };
+
+  const updateUser = async (id, userData) => {
+    try {
+      const res = await api.put(`/users/${id}`, userData);
+      setUsers(prev => prev.map(u => (u._id === id || u.id === id) ? res.data.user : u));
+      return { success: true };
+    } catch (err) {
+      return { success: false, message: err.response?.data?.message || 'Update failed' };
+    }
+  };
+
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -243,6 +264,8 @@ export const AppContextProvider = ({ children }) => {
         isLoading,
         login,
         signup,
+        registerByAdmin,
+        updateUser,
         logout,
         addFinding,
         deleteFinding,

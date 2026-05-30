@@ -284,6 +284,28 @@ app.delete('/api/users/:id', async (req, res) => {
   }
 });
 
+// UPDATE USER ENDPOINT
+app.put('/api/users/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, username, password, role } = req.body;
+    
+    const user = await User.findById(id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    
+    if (name) user.name = name;
+    if (username) user.username = username;
+    if (role) user.role = role;
+    if (password) user.password = password; 
+    
+    await user.save();
+    res.json({ success: true, user: { id: user._id, name: user.name, username: user.username, role: user.role } });
+  } catch (error) {
+    console.error('[UPDATE USER ERROR]', error);
+    res.status(500).json({ message: error.message || 'Failed to update user' });
+  }
+});
+
 // BATCH ENDPOINTS
 app.post('/api/users/batch', async (req, res) => {
   try {
@@ -336,4 +358,3 @@ if (require.main === module) {
     console.log(`Server is running on port ${PORT}`);
   });
 }
-
