@@ -51,6 +51,10 @@ export default function Dashboard() {
   const effectiveAgent = isAgentRole ? currentUser.name : selectedAgent;
 
   const uniqueAgents = useMemo(() => ['All', ...new Set(findings.map(f => f.agentName))], [findings]);
+  const uniqueYears = useMemo(() => ['All', ...new Set(findings.map(f => {
+    const d = new Date(f.date);
+    return isNaN(d.getTime()) ? 'Unknown' : d.getFullYear().toString();
+  }))].sort(), [findings]);
   
   const months = [
     { value: 'All', label: 'Semua Bulan' }, { value: '0', label: 'Jan' }, { value: '1', label: 'Feb' },
@@ -234,21 +238,22 @@ export default function Dashboard() {
         <div className="glass-card" style={styles.analyticsCard}>
           <div style={{ display: 'flex', gap: '20px', height: '100%', alignItems: 'center', flexWrap: 'wrap' }}>
             {/* QMS Meter */}
-            <div style={{ flex: '1', minWidth: '200px', textAlign: 'center' }}>
-              <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '10px', fontWeight: '600' }}>QMS PERFORMANCE (QC ONLY)</div>
-              <div style={{ height: '180px', position: 'relative' }}>
+            <div style={{ flex: '1', minWidth: '220px', textAlign: 'center', marginTop: '-20px' }}>
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '0px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' }}>QMS PERFORMANCE (QC ONLY)</div>
+              <div style={{ height: '220px', position: 'relative', marginTop: '-10px' }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
                       data={gaugeData}
                       cx="50%"
-                      cy="100%"
+                      cy="80%"
                       startAngle={180}
                       endAngle={0}
-                      innerRadius={60}
-                      outerRadius={80}
+                      innerRadius={70}
+                      outerRadius={100}
                       paddingAngle={0}
                       dataKey="value"
+                      stroke="none"
                     >
                       {gaugeData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -256,25 +261,25 @@ export default function Dashboard() {
                     </Pie>
                   </PieChart>
                 </ResponsiveContainer>
-                <div style={{ position: 'absolute', bottom: '10px', left: '50%', transform: 'translateX(-50%)', textAlign: 'center' }}>
-                  <div style={{ fontSize: '28px', fontWeight: '900', color: '#fff' }}>{stats.avgScore}%</div>
-                  <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Target: 95%</div>
+                <div style={{ position: 'absolute', bottom: '55px', left: '50%', transform: 'translateX(-50%)', textAlign: 'center' }}>
+                  <div style={{ fontSize: '36px', fontWeight: '900', color: '#fff', textShadow: '0 0 20px rgba(99, 102, 241, 0.4)' }}>{stats.avgScore}%</div>
+                  <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: '600' }}>TARGET: 95%</div>
                 </div>
               </div>
             </div>
 
             {/* Weekly Trend */}
             <div style={{ flex: '2', minWidth: '300px', height: '180px' }}>
-              <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '10px', fontWeight: '600' }}>WEEKLY TREND</div>
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '15px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' }}>WEEKLY TREND PROGRESSION</div>
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={trendData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
                   <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={10} tickLine={false} axisLine={false} />
                   <YAxis stroke="var(--text-muted)" fontSize={10} tickLine={false} axisLine={false} domain={[0, 100]} />
                   <Tooltip 
-                    contentStyle={{ background: 'rgba(15, 23, 42, 0.9)', border: '1px solid var(--border-light)', borderRadius: '8px', fontSize: '12px' }}
+                    contentStyle={{ background: 'rgba(15, 23, 42, 0.95)', border: '1px solid var(--border-light)', borderRadius: '12px', fontSize: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.5)' }}
                   />
-                  <Line type="monotone" dataKey="score" stroke="var(--primary)" strokeWidth={3} dot={{ r: 4, fill: 'var(--primary)', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 6 }} />
+                  <Line type="monotone" dataKey="score" stroke="var(--primary)" strokeWidth={4} dot={{ r: 5, fill: 'var(--primary)', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 7 }} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -305,12 +310,24 @@ export default function Dashboard() {
             </select>
           </div>
           <div className="form-group">
+            <label className="form-label">Bulan</label>
+            <select className="form-input" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)}>
+              {months.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+            </select>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Tahun</label>
+            <select className="form-input" value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)}>
+              {uniqueYears.map(y => <option key={y} value={y}>{y === 'All' ? 'Semua Tahun' : y}</option>)}
+            </select>
+          </div>
+          <div className="form-group">
             <label className="form-label">Periode Week</label>
             <select className="form-input" value={selectedWeek} onChange={(e) => setSelectedWeek(e.target.value)}>
               {weeks.map(w => <option key={w} value={w}>{w === 'All' ? 'Semua Minggu' : w}</option>)}
             </select>
           </div>
-          <div className="form-group">
+          <div className="form-group" style={{ gridColumn: 'span 2' }}>
             <label className="form-label">Search</label>
             <div style={{ position: 'relative' }}>
               <Search size={14} style={{ position: 'absolute', left: '10px', top: '12px', color: 'var(--text-muted)' }} />
@@ -372,7 +389,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Audit Detail Modal (Keeping existing logic for brevity) */}
+      {/* Audit Detail Modal */}
       {selectedAudit && (
         <div style={styles.modalOverlay} onClick={() => setSelectedAuditId(null)}>
           <div className="glass-card modal-card" style={styles.modalCard} onClick={e => e.stopPropagation()}>
@@ -388,7 +405,6 @@ export default function Dashboard() {
                 <div className="meta-item"><strong>Periode:</strong> {selectedAudit.week || '-'}</div>
                 <div className="meta-item"><strong>Tanggal:</strong> {selectedAudit.date}</div>
               </div>
-              {/* ... Rest of modal content remains same as before ... */}
               <div style={{ marginTop: '20px' }}>
                 <h4 style={styles.secTitle}>Catatan Auditor:</h4>
                 <p style={{ fontSize: '12px', color: 'var(--text-muted)', fontStyle: 'italic', background: 'rgba(255,255,255,0.05)', padding: '10px', borderRadius: '8px' }}>
@@ -409,14 +425,14 @@ const styles = {
   subtitle: { fontSize: '13px', color: 'var(--text-muted)' },
   resetBtn: { padding: '8px 16px', fontSize: '13px' },
   dashboardGrid: { display: 'grid', gridTemplateColumns: '1.8fr 0.8fr', gap: '20px', marginBottom: '24px' },
-  analyticsCard: { padding: '20px', display: 'flex', flexDirection: 'column' },
+  analyticsCard: { padding: '24px', display: 'flex', flexDirection: 'column', minHeight: '300px' },
   statsGridMini: { display: 'flex', flexDirection: 'column', gap: '20px' },
   statCard: { padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px', flex: 1 },
   statHeader: { display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-muted)', fontWeight: '600' },
   statValue: { fontSize: '24px', fontWeight: '800' },
-  filterCard: { padding: '16px' },
-  cardHeader: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', fontSize: '14px', fontWeight: '700' },
-  filterGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' },
+  filterCard: { padding: '20px' },
+  cardHeader: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px', fontSize: '14px', fontWeight: '700' },
+  filterGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '16px' },
   pagination: { display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '16px', marginTop: '20px' },
   modalOverlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' },
   modalCard: { width: '100%', maxWidth: '650px', maxHeight: '90vh', overflowY: 'auto', padding: '24px' },
