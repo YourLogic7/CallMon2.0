@@ -2,7 +2,7 @@ import { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppContext } from '../context/AppContext';
 import { User, Key, LogIn, Award, Eye, EyeOff } from 'lucide-react';
-import logoGue from '/home/user/callmon20/src/assets/C4logo.png'; 
+import logoGue from '../assets/C4logo.png'; 
 
 
 export default function Auth({ defaultIsLogin = true }) {
