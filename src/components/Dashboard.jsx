@@ -94,7 +94,6 @@ export default function Dashboard() {
 
   const stats = useMemo(() => {
     const total = filteredFindings.length;
-    // QMS ONLY calculated for QC/superadmin findings. TL findings are "reminding" only.
     const qcFindings = filteredFindings.filter(f => ['QC', 'superadmin'].includes(f.auditorRole));
     const totalQC = qcFindings.length;
 
@@ -121,7 +120,6 @@ export default function Dashboard() {
     return { avgScore, totalAudits: total, topAgent: topAgentName, qcCount: totalQC };
   }, [filteredFindings]);
 
-  // Chart Data
   const trendData = useMemo(() => {
     const wks = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
     return wks.map(w => {
@@ -162,18 +160,30 @@ export default function Dashboard() {
   };
 
   const handleExportExcel = () => {
-    const data = filteredFindings.map(f => ({
-      ID: (f.id || f._id || '').toString(),
-      Tanggal: f.date,
-      Week: f.week || '-',
-      Agent: f.agentName,
-      Score: f.score,
-      Auditor: f.auditorName,
-      Role: f.auditorRole,
-      MSISDN: f.msisdn || '-',
-      NoTiket: f.noTiket || '-',
-      Notes: f.notes || ''
-    }));
+    const data = filteredFindings.map(f => {
+      const baseData = {
+        ID: (f.id || f._id || '').toString(),
+        Tanggal: f.date,
+        Week: f.week || '-',
+        Agent: f.agentName,
+        Score: f.score,
+        Auditor: f.auditorName,
+        Role: f.auditorRole,
+        MSISDN: f.msisdn || '-',
+        NoTiket: f.noTiket || '-',
+        Notes: f.notes || ''
+      };
+
+      // Add individual parameter scores
+      QM_CATEGORIES.forEach(cat => {
+        cat.parameters.forEach(p => {
+          baseData[`${p.id}. ${p.name}`] = (f.paramScores || {})[p.id] === 1 ? 1 : 0;
+        });
+      });
+
+      return baseData;
+    });
+
     const worksheet = XLSX.utils.json_to_sheet(data);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Findings");
@@ -181,15 +191,26 @@ export default function Dashboard() {
   };
 
   const handleExportCSV = () => {
-    const data = filteredFindings.map(f => ({
-      ID: f.id || f._id,
-      Tanggal: f.date,
-      Week: f.week || '-',
-      Agent: f.agentName,
-      Score: f.score,
-      Auditor: f.auditorName,
-      Notes: f.notes || ''
-    }));
+    const data = filteredFindings.map(f => {
+      const baseData = {
+        ID: (f.id || f._id || '').toString(),
+        Tanggal: f.date,
+        Week: f.week || '-',
+        Agent: f.agentName,
+        Score: f.score,
+        Auditor: f.auditorName,
+        Notes: f.notes || ''
+      };
+
+      QM_CATEGORIES.forEach(cat => {
+        cat.parameters.forEach(p => {
+          baseData[`${p.id}. ${p.name}`] = (f.paramScores || {})[p.id] === 1 ? 1 : 0;
+        });
+      });
+
+      return baseData;
+    });
+
     const ws = XLSX.utils.json_to_sheet(data);
     const csv = XLSX.utils.sheet_to_csv(ws);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -234,10 +255,8 @@ export default function Dashboard() {
       </div>
 
       <div className="dashboard-grid" style={styles.dashboardGrid}>
-        {/* Analytics Section */}
         <div className="glass-card" style={styles.analyticsCard}>
           <div style={{ display: 'flex', gap: '20px', height: '100%', alignItems: 'center', flexWrap: 'wrap' }}>
-            {/* QMS Meter */}
             <div style={{ flex: '1', minWidth: '220px', textAlign: 'center', marginTop: '-20px' }}>
               <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '0px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' }}>QMS PERFORMANCE (QC ONLY)</div>
               <div style={{ height: '220px', position: 'relative', marginTop: '-10px' }}>
@@ -268,7 +287,6 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Weekly Trend */}
             <div style={{ flex: '2', minWidth: '300px', height: '180px' }}>
               <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '15px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px' }}>WEEKLY TREND PROGRESSION</div>
               <ResponsiveContainer width="100%" height="100%">
@@ -286,7 +304,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Stats Grid Mini */}
         <div style={styles.statsGridMini}>
           <div className="glass-card stat-card" style={styles.statCard}>
             <div style={styles.statHeader}><span>Total Monitoring</span><FileText size={16} color="var(--secondary)" /></div>
@@ -337,7 +354,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Table Card */}
       <div className="glass-card table-card" style={{ marginTop: '24px' }}>
         <div className="table-container">
           <table>
@@ -389,7 +405,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Audit Detail Modal */}
       {selectedAudit && (
         <div style={styles.modalOverlay} onClick={() => setSelectedAuditId(null)}>
           <div className="glass-card modal-card" style={styles.modalCard} onClick={e => e.stopPropagation()}>
@@ -405,12 +420,67 @@ export default function Dashboard() {
                 <div className="meta-item"><strong>Periode:</strong> {selectedAudit.week || '-'}</div>
                 <div className="meta-item"><strong>Tanggal:</strong> {selectedAudit.date}</div>
               </div>
+
+              <div style={{ marginTop: '20px' }}>
+                <h4 style={styles.secTitle}>Hasil Parameter:</h4>
+                <div style={styles.paramGrid}>
+                  {QM_CATEGORIES.map(cat => (
+                    <div key={cat.id} style={{ marginBottom: '12px' }}>
+                      <div style={{ fontSize: '12px', fontWeight: '700', marginBottom: '6px', color: 'var(--primary)', borderBottom: '1px solid var(--border-light)' }}>
+                        {cat.name}
+                      </div>
+                      {cat.parameters.map(p => {
+                        const isSuccess = (selectedAudit.paramScores || {})[p.id] === 1;
+                        const failedSubs = (selectedAudit.failedSubParams || {})[p.id] || [];
+                        return (
+                          <div key={p.id} style={{ marginBottom: '4px', fontSize: '11px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span style={{ color: isSuccess ? 'var(--success)' : 'var(--danger)', fontWeight: '500' }}>
+                                {isSuccess ? '✓' : '✗'} {p.name}
+                              </span>
+                              <span>{isSuccess ? p.weight : 0}/{p.weight}</span>
+                            </div>
+                            {!isSuccess && failedSubs.length > 0 && (
+                              <div style={{ paddingLeft: '14px', color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '10px' }}>
+                                {failedSubs.map(idx => p.subParams[idx]).join(', ')}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               <div style={{ marginTop: '20px' }}>
                 <h4 style={styles.secTitle}>Catatan Auditor:</h4>
                 <p style={{ fontSize: '12px', color: 'var(--text-muted)', fontStyle: 'italic', background: 'rgba(255,255,255,0.05)', padding: '10px', borderRadius: '8px' }}>
                   {selectedAudit.notes || 'Tidak ada catatan.'}
                 </p>
               </div>
+
+              {(selectedAudit.hasilValidasiTL || selectedAudit.improvement || selectedAudit.pembinaan) && (
+                <div style={{ marginTop: '20px', borderTop: '1px solid var(--border-light)', paddingTop: '16px' }}>
+                  <h4 style={styles.secTitle}>Hasil Tindak Lanjut TL:</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '12px', background: 'rgba(99, 102, 241, 0.05)', padding: '12px', borderRadius: '10px' }}>
+                    <div>
+                      <strong style={{ color: 'var(--primary)' }}>Validasi:</strong>
+                      <p style={{ marginTop: '4px' }}>{selectedAudit.hasilValidasiTL || '-'}</p>
+                    </div>
+                    <div>
+                      <strong style={{ color: 'var(--primary)' }}>Improvement:</strong>
+                      <p style={{ marginTop: '4px' }}>{selectedAudit.improvement || '-'}</p>
+                    </div>
+                    <div>
+                      <strong style={{ color: 'var(--primary)' }}>Pembinaan:</strong>
+                      <div style={{ marginTop: '4px' }}>
+                        {selectedAudit.pembinaan ? <span className="badge badge-primary">{selectedAudit.pembinaan}</span> : '-'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -439,7 +509,8 @@ const styles = {
   modalHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--border-light)', paddingBottom: '12px' },
   closeBtn: { background: 'none', border: 'none', color: '#fff', fontSize: '24px', cursor: 'pointer' },
   modalMetaGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '12px' },
-  secTitle: { fontSize: '13px', fontWeight: '800', marginBottom: '10px', color: 'var(--primary)' }
+  secTitle: { fontSize: '13px', fontWeight: '800', marginBottom: '10px', color: 'var(--primary)' },
+  paramGrid: { background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '12px' }
 };
 
 // Responsive Overrides
