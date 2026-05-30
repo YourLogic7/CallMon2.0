@@ -1,21 +1,25 @@
-import { useState, useContext, useEffect, useRef } from 'react';
+import { useState, useContext, useMemo, useRef } from 'react';
 import { AppContext } from '../context/AppContext';
 import { Users, Trash2, UserCheck, Plus, ShieldCheck, Contact, Upload } from 'lucide-react';
 import Papa from 'papaparse';
 
 export default function TeamManagement() {
-  const { teamLeaders, sdmList, addTeamLeader, deleteTeamLeader, addSDM, deleteSDM, addTeamLeadersBatch, addSdmBatch } = useContext(AppContext);
+  const { 
+    teamLeaders, addTeamLeader, deleteTeamLeader, 
+    sdmList, addSDM, deleteSDM, 
+    users, addTeamLeadersBatch, addSdmBatch 
+  } = useContext(AppContext);
+
   const [tlForm, setTlForm] = useState({ name: '', nik: '' });
   const [sdmForm, setSdmForm] = useState({ name: '', nik: '', teamName: '' });
   
   const tlFileInputRef = useRef(null);
   const sdmFileInputRef = useRef(null);
 
-  useEffect(() => {
-    if (teamLeaders.length > 0 && sdmForm.teamName === '') {
-      setSdmForm(prev => ({ ...prev, teamName: teamLeaders[0].name }));
-    }
-  }, [teamLeaders, sdmForm.teamName]);
+  // Get users with role 'Agent' that aren't already in sdmList (or allow re-mapping)
+  const agentUsers = useMemo(() => {
+    return users.filter(u => u.role === 'Agent');
+  }, [users]);
 
   const handleTlSubmit = async (e) => {
     e.preventDefault();
@@ -31,6 +35,16 @@ export default function TeamManagement() {
     }
     await addSDM(sdmForm.name, sdmForm.nik, sdmForm.teamName);
     setSdmForm({ ...sdmForm, name: '', nik: '' });
+  };
+
+  const handleSdmNikChange = (e) => {
+    const selectedNik = e.target.value;
+    const user = agentUsers.find(u => u.username === selectedNik);
+    setSdmForm({
+      ...sdmForm,
+      nik: selectedNik,
+      name: user ? user.name : ''
+    });
   };
 
   const handleTlFileUpload = (e) => {
@@ -59,11 +73,30 @@ export default function TeamManagement() {
         header: true,
         skipEmptyLines: true,
         complete: async (results) => {
-          const res = await addSdmBatch(results.data);
-          if (res.success) {
-            alert(`Berhasil mengimpor ${results.data.length} SDM!`);
-          } else {
-            alert(res.message);
+          // Filter: only allow SDM whose NIK exists in User data
+          const registeredUsernames = new Set(users.map(u => u.username));
+          const validData = [];
+          const invalidNiks = [];
+
+          results.data.forEach(item => {
+            if (registeredUsernames.has(item.nik)) {
+              validData.push(item);
+            } else {
+              invalidNiks.push(item.nik);
+            }
+          });
+
+          if (invalidNiks.length > 0) {
+            alert(`Gagal impor ${invalidNiks.length} data karena NIK tidak terdaftar di User: ${invalidNiks.join(', ')}`);
+          }
+
+          if (validData.length > 0) {
+            const res = await addSdmBatch(validData);
+            if (res.success) {
+              alert(`Berhasil mengimpor ${validData.length} SDM!`);
+            } else {
+              alert(res.message);
+            }
           }
           e.target.value = null;
         }
@@ -74,143 +107,113 @@ export default function TeamManagement() {
   return (
     <div className="main-content">
       <div style={styles.header}>
-        <h2 style={styles.title}>Team Management</h2>
-        <p style={styles.subtitle}>Kelola struktur organisasi dan pemetaan Agent ke Team Leader.</p>
+        <h2 style={styles.title}>Team & SDM Management</h2>
+        <p style={styles.subtitle}>Atur struktur organisasi dan penempatan agent CallMon2.0</p>
       </div>
 
       <div className="team-layout" style={styles.layout}>
         {/* TL Section */}
-        <div style={styles.section}>
-          <div className="glass-card" style={styles.card}>
-            <div style={styles.cardHeader}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <UserCheck size={18} color="var(--primary)" />
-                  <h3 style={styles.cardTitle}>Kelola Team Leader</h3>
-                </div>
-                <div>
-                  <input type="file" accept=".csv" ref={tlFileInputRef} style={{ display: 'none' }} onChange={handleTlFileUpload} />
-                  <button className="btn-primary" style={{ padding: '6px 10px', fontSize: '11px', background: 'var(--success)', display: 'flex', alignItems: 'center', gap: '4px' }} onClick={() => tlFileInputRef.current.click()}>
-                    <Upload size={12} /> Import
-                  </button>
-                </div>
-              </div>
+        <div className="glass-card" style={styles.card}>
+          <div style={styles.cardHeader}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <ShieldCheck size={20} color="var(--primary)" />
+              <h3 style={styles.cardTitle}>Data Team Leader</h3>
             </div>
-            
-            <form onSubmit={handleTlSubmit} style={styles.formRow}>
-              <input type="text" className="form-input" placeholder="Nama TL" value={tlForm.name} onChange={e => setTlForm({...tlForm, name: e.target.value})} required />
-              <input type="text" className="form-input" placeholder="NIK" value={tlForm.nik} onChange={e => setTlForm({...tlForm, nik: e.target.value})} required />
-              <button type="submit" className="btn-primary" style={styles.addBtn} title="Tambah TL">
-                <Plus size={18} />
+            <div>
+              <input type="file" accept=".csv" ref={tlFileInputRef} style={{ display: 'none' }} onChange={handleTlFileUpload} />
+              <button className="btn-primary" style={{ background: 'var(--success)', padding: '6px 12px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => tlFileInputRef.current.click()}>
+                <Upload size={14} /> Import
               </button>
-            </form>
-
-            <div className="table-container" style={{ marginTop: '20px' }}>
-              <table style={styles.table}>
-                <thead>
-                  <tr>
-                    <th>Informasi TL</th>
-                    <th style={{ textAlign: 'right' }}>Aksi</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {teamLeaders.map(tl => (
-                    <tr key={tl._id}>
-                      <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <div style={styles.iconBox}><ShieldCheck size={14} /></div>
-                          <div>
-                            <div style={{ fontWeight: '700', fontSize: '14px' }}>{tl.name}</div>
-                            <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>NIK: {tl.nik}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td style={{ textAlign: 'right' }}>
-                        <button onClick={() => deleteTeamLeader(tl._id)} style={styles.delBtn}><Trash2 size={16} /></button>
-                      </td>
-                    </tr>
-                  ))}
-                  {teamLeaders.length === 0 && <tr><td colSpan="2" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>Belum ada data TL.</td></tr>}
-                </tbody>
-              </table>
             </div>
+          </div>
+
+          <form onSubmit={handleTlSubmit} style={styles.formInline}>
+            <input type="text" className="form-input" style={{ flex: 1.5 }} placeholder="Nama TL" value={tlForm.name} onChange={e => setTlForm({ ...tlForm, name: e.target.value })} required />
+            <input type="text" className="form-input" style={{ flex: 1 }} placeholder="NIK TL" value={tlForm.nik} onChange={e => setTlForm({ ...tlForm, nik: e.target.value })} required />
+            <button type="submit" className="btn-primary" style={{ padding: '10px' }}><Plus size={18} /></button>
+          </form>
+
+          <div className="table-container" style={{ marginTop: '20px' }}>
+            <table style={styles.table}>
+              <thead>
+                <tr><th>Nama TL</th><th>NIK</th><th style={{ textAlign: 'right' }}>Aksi</th></tr>
+              </thead>
+              <tbody>
+                {teamLeaders.map(tl => (
+                  <tr key={tl._id}>
+                    <td><div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><UserCheck size={14} color="var(--primary)" /> {tl.name}</div></td>
+                    <td><code style={{ fontSize: '11px' }}>{tl.nik}</code></td>
+                    <td style={{ textAlign: 'right' }}>
+                      <button onClick={() => deleteTeamLeader(tl._id)} style={styles.delBtn}><Trash2 size={14} /></button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
 
         {/* SDM Section */}
-        <div style={{ ...styles.section, flex: '1.4' }}>
-          <div className="glass-card" style={styles.card}>
-            <div style={styles.cardHeader}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <Users size={18} color="var(--primary)" />
-                  <h3 style={styles.cardTitle}>Kelola SDM (Agents)</h3>
-                </div>
-                <div>
-                  <input type="file" accept=".csv" ref={sdmFileInputRef} style={{ display: 'none' }} onChange={handleSdmFileUpload} />
-                  <button className="btn-primary" style={{ padding: '6px 10px', fontSize: '11px', background: 'var(--success)', display: 'flex', alignItems: 'center', gap: '4px' }} onClick={() => sdmFileInputRef.current.click()}>
-                    <Upload size={12} /> Import
-                  </button>
-                </div>
-              </div>
+        <div className="glass-card" style={styles.card}>
+          <div style={styles.cardHeader}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <Contact size={20} color="var(--success)" />
+              <h3 style={styles.cardTitle}>Data SDM Agent</h3>
             </div>
-            
-            <form onSubmit={handleSdmSubmit} style={styles.gridForm}>
+            <div>
+              <input type="file" accept=".csv" ref={sdmFileInputRef} style={{ display: 'none' }} onChange={handleSdmFileUpload} />
+              <button className="btn-primary" style={{ background: 'var(--success)', padding: '6px 12px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => sdmFileInputRef.current.click()}>
+                <Upload size={14} /> Import
+              </button>
+            </div>
+          </div>
+
+          <form onSubmit={handleSdmSubmit} style={styles.formVertical}>
+            <div style={styles.grid2}>
               <div className="form-group">
-                <label className="form-label">Nama SDM</label>
-                <input type="text" className="form-input" placeholder="Nama Lengkap" value={sdmForm.name} onChange={e => setSdmForm({...sdmForm, name: e.target.value})} required />
-              </div>
-              <div className="form-group">
-                <label className="form-label">NIK SDM</label>
-                <input type="text" className="form-input" placeholder="NIK" value={sdmForm.nik} onChange={e => setSdmForm({...sdmForm, nik: e.target.value})} required />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Pilih Team</label>
-                <select className="form-input" value={sdmForm.teamName} onChange={e => setSdmForm({...sdmForm, teamName: e.target.value})} required>
-                  <option value="" disabled>Pilih TL</option>
-                  {teamLeaders.map(tl => (
-                    <option key={tl._id} value={tl.name}>{tl.name}</option>
+                <label className="form-label" style={{ fontSize: '11px' }}>NIK Agent (Username)</label>
+                <select className="form-input" value={sdmForm.nik} onChange={handleSdmNikChange} required>
+                  <option value="">Pilih NIK / Username</option>
+                  {agentUsers.map(u => (
+                    <option key={u.username} value={u.username}>{u.username} - {u.name}</option>
                   ))}
                 </select>
               </div>
-              <button type="submit" className="btn-primary" style={{ gridColumn: 'span 3', marginTop: '4px' }}>
-                <Plus size={16} /> Daftarkan SDM Baru
-              </button>
-            </form>
-
-            <div className="table-container" style={{ marginTop: '10px' }}>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Biodata</th>
-                    <th>Penempatan Team</th>
-                    <th style={{ textAlign: 'right' }}>Aksi</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sdmList.map(s => (
-                    <tr key={s._id}>
-                      <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <div style={styles.iconBoxGreen}><Contact size={14} /></div>
-                          <div>
-                            <div style={{ fontWeight: '700', fontSize: '14px' }}>{s.name}</div>
-                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>NIK: {s.nik}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td>
-                        <span className="badge badge-primary" style={{ fontSize: '10px' }}>{s.teamName}</span>
-                      </td>
-                      <td style={{ textAlign: 'right' }}>
-                        <button onClick={() => deleteSDM(s._id)} style={styles.delBtn}><Trash2 size={16} /></button>
-                      </td>
-                    </tr>
-                  ))}
-                  {sdmList.length === 0 && <tr><td colSpan="3" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>Belum ada data SDM.</td></tr>}
-                </tbody>
-              </table>
+              <div className="form-group">
+                <label className="form-label" style={{ fontSize: '11px' }}>Nama Lengkap</label>
+                <input type="text" className="form-input" placeholder="Otomatis terisi" value={sdmForm.name} readOnly style={{ background: 'rgba(255,255,255,0.05)' }} />
+              </div>
             </div>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
+              <div className="form-group" style={{ flex: 1 }}>
+                <label className="form-label" style={{ fontSize: '11px' }}>Pilih Team Leader</label>
+                <select className="form-input" value={sdmForm.teamName} onChange={e => setSdmForm({ ...sdmForm, teamName: e.target.value })} required>
+                  <option value="">Pilih TL...</option>
+                  {teamLeaders.map(tl => <option key={tl.nik} value={tl.name}>{tl.name}</option>)}
+                </select>
+              </div>
+              <button type="submit" className="btn-primary" style={{ height: '42px', padding: '0 20px' }}>Tambah Agent</button>
+            </div>
+          </form>
+
+          <div className="table-container" style={{ marginTop: '20px' }}>
+            <table style={styles.table}>
+              <thead>
+                <tr><th>Nama Agent</th><th>NIK</th><th>Team</th><th style={{ textAlign: 'right' }}>Aksi</th></tr>
+              </thead>
+              <tbody>
+                {sdmList.map(sdm => (
+                  <tr key={sdm._id}>
+                    <td style={{ fontWeight: '700' }}>{sdm.name}</td>
+                    <td><code style={{ fontSize: '11px' }}>{sdm.nik}</code></td>
+                    <td><span className="badge badge-primary" style={{ fontSize: '10px' }}>{sdm.teamName}</span></td>
+                    <td style={{ textAlign: 'right' }}>
+                      <button onClick={() => deleteSDM(sdm._id)} style={styles.delBtn}><Trash2 size={14} /></button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -222,16 +225,14 @@ const styles = {
   header: { marginBottom: '32px' },
   title: { fontSize: '26px', fontWeight: '800', background: 'linear-gradient(135deg, #fff 30%, var(--primary) 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' },
   subtitle: { fontSize: '14px', color: 'var(--text-muted)', marginTop: '4px' },
-  layout: { display: 'flex', gap: '24px', flexWrap: 'wrap', alignItems: 'flex-start' },
-  section: { flex: '1', minWidth: '320px' },
-  card: { height: '100%' },
-  cardHeader: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '24px', borderBottom: '1px solid var(--border-light)', paddingBottom: '12px' },
+  layout: { display: 'flex', flexDirection: 'column', gap: '24px' },
+  card: { padding: '24px' },
+  cardHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', borderBottom: '1px solid var(--border-light)', paddingBottom: '12px' },
   cardTitle: { fontSize: '16px', fontWeight: '700' },
-  formRow: { display: 'flex', gap: '10px', marginBottom: '20px' },
-  gridForm: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '24px' },
-  addBtn: { padding: '10px', width: '48px', height: '42px', flexShrink: 0 },
-  iconBox: { width: '30px', height: '30px', borderRadius: '6px', background: 'rgba(99, 102, 241, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' },
-  iconBoxGreen: { width: '30px', height: '30px', borderRadius: '6px', background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--success)' },
+  formInline: { display: 'flex', gap: '10px', marginBottom: '10px' },
+  formVertical: { display: 'flex', flexDirection: 'column', gap: '12px' },
+  grid2: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' },
+  avatarMini: { width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(99, 102, 241, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' },
   delBtn: { background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', opacity: 0.6, padding: '8px', borderRadius: '6px', transition: '0.2s' },
   table: { width: '100%' }
 };
