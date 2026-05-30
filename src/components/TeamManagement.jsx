@@ -16,15 +16,34 @@ export default function TeamManagement() {
   const tlFileInputRef = useRef(null);
   const sdmFileInputRef = useRef(null);
 
-  // Get users with role 'Agent' that aren't already in sdmList (or allow re-mapping)
+  // Get users with role 'Agent'
   const agentUsers = useMemo(() => {
     return users.filter(u => u.role === 'Agent');
   }, [users]);
 
+  // Get users with role 'TL'
+  const tlUsers = useMemo(() => {
+    return users.filter(u => u.role === 'TL');
+  }, [users]);
+
   const handleTlSubmit = async (e) => {
     e.preventDefault();
+    if (!tlForm.nik) {
+      alert('Pilih NIK / Username Team Leader terlebih dahulu!');
+      return;
+    }
     await addTeamLeader(tlForm.name, tlForm.nik);
     setTlForm({ name: '', nik: '' });
+  };
+
+  const handleTlNikChange = (e) => {
+    const selectedNik = e.target.value;
+    const user = tlUsers.find(u => u.username === selectedNik);
+    setTlForm({
+      ...tlForm,
+      nik: selectedNik,
+      name: user ? user.name : ''
+    });
   };
 
   const handleSdmSubmit = async (e) => {
@@ -54,11 +73,29 @@ export default function TeamManagement() {
         header: true,
         skipEmptyLines: true,
         complete: async (results) => {
-          const res = await addTeamLeadersBatch(results.data);
-          if (res.success) {
-            alert(`Berhasil mengimpor ${results.data.length} Team Leader!`);
-          } else {
-            alert(res.message);
+          const registeredUsernames = new Set(users.map(u => u.username));
+          const validData = [];
+          const invalidNiks = [];
+
+          results.data.forEach(item => {
+            if (registeredUsernames.has(item.nik)) {
+              validData.push(item);
+            } else {
+              invalidNiks.push(item.nik);
+            }
+          });
+
+          if (invalidNiks.length > 0) {
+            alert(`Gagal impor ${invalidNiks.length} data TL karena NIK tidak terdaftar di User: ${invalidNiks.join(', ')}`);
+          }
+
+          if (validData.length > 0) {
+            const res = await addTeamLeadersBatch(validData);
+            if (res.success) {
+              alert(`Berhasil mengimpor ${validData.length} Team Leader!`);
+            } else {
+              alert(res.message);
+            }
           }
           e.target.value = null;
         }
@@ -73,7 +110,6 @@ export default function TeamManagement() {
         header: true,
         skipEmptyLines: true,
         complete: async (results) => {
-          // Filter: only allow SDM whose NIK exists in User data
           const registeredUsernames = new Set(users.map(u => u.username));
           const validData = [];
           const invalidNiks = [];
@@ -87,7 +123,7 @@ export default function TeamManagement() {
           });
 
           if (invalidNiks.length > 0) {
-            alert(`Gagal impor ${invalidNiks.length} data karena NIK tidak terdaftar di User: ${invalidNiks.join(', ')}`);
+            alert(`Gagal impor ${invalidNiks.length} data SDM karena NIK tidak terdaftar di User: ${invalidNiks.join(', ')}`);
           }
 
           if (validData.length > 0) {
@@ -127,10 +163,25 @@ export default function TeamManagement() {
             </div>
           </div>
 
-          <form onSubmit={handleTlSubmit} style={styles.formInline}>
-            <input type="text" className="form-input" style={{ flex: 1.5 }} placeholder="Nama TL" value={tlForm.name} onChange={e => setTlForm({ ...tlForm, name: e.target.value })} required />
-            <input type="text" className="form-input" style={{ flex: 1 }} placeholder="NIK TL" value={tlForm.nik} onChange={e => setTlForm({ ...tlForm, nik: e.target.value })} required />
-            <button type="submit" className="btn-primary" style={{ padding: '10px' }}><Plus size={18} /></button>
+          <form onSubmit={handleTlSubmit} style={styles.formVertical}>
+            <div style={styles.grid2}>
+              <div className="form-group">
+                <label className="form-label" style={{ fontSize: '11px' }}>NIK TL (Username)</label>
+                <select className="form-input" value={tlForm.nik} onChange={handleTlNikChange} required>
+                  <option value="">Pilih NIK / Username</option>
+                  {tlUsers.map(u => (
+                    <option key={u.username} value={u.username}>{u.username} - {u.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label" style={{ fontSize: '11px' }}>Nama Lengkap TL</label>
+                <input type="text" className="form-input" placeholder="Otomatis terisi" value={tlForm.name} readOnly style={{ background: 'rgba(255,255,255,0.05)' }} />
+              </div>
+            </div>
+            <button type="submit" className="btn-primary" style={{ marginTop: '10px', height: '42px' }}>
+              <Plus size={18} style={{ marginRight: '8px' }} /> Tambah Team Leader
+            </button>
           </form>
 
           <div className="table-container" style={{ marginTop: '20px' }}>
