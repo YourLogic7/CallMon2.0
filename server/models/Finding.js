@@ -56,6 +56,9 @@ const FindingSchema = new mongoose.Schema({
   hasilValidasiTL: String,
   improvement: String,
   pembinaan: String,
+  followUpAt: {
+    type: Date
+  },
   
   // Backward compatibility fields
   evaluatorName: String,

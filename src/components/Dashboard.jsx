@@ -28,7 +28,8 @@ import {
   Calendar,
   Clock,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Info
 } from 'lucide-react';
 
 export default function Dashboard() {
@@ -93,6 +94,33 @@ export default function Dashboard() {
       return true;
     });
   }, [findings, selectedAgent, startDate, endDate, selectedMonth, selectedYear, selectedWeek, searchQuery, currentUser, isAgentRole]);
+
+  const activeCoaching = useMemo(() => {
+    // Only determine active coaching if an agent is specifically targeted (either by role or filter)
+    const targetAgent = isAgentRole ? currentUser.name : (selectedAgent !== 'All' ? selectedAgent : null);
+    if (!targetAgent) return null;
+
+    const now = new Date();
+    // Get all findings for this agent that have a pembinaan
+    const agentFindings = findings.filter(f => f.agentName === targetAgent && f.pembinaan && f.followUpAt);
+    
+    // Check for each if it's still active
+    const active = agentFindings.find(f => {
+      const followUpDate = new Date(f.followUpAt);
+      const diffMs = now - followUpDate;
+      const diffDays = diffMs / (1000 * 60 * 60 * 24);
+      const diffMonths = diffDays / 30.44; // Approx
+
+      if (f.pembinaan.toLowerCase().includes('coaching')) {
+        return diffDays <= 7;
+      } else {
+        // Konseling, BATL, SP
+        return diffMonths <= 6;
+      }
+    });
+
+    return active ? active.pembinaan : null;
+  }, [findings, currentUser, selectedAgent, isAgentRole]);
 
   const stats = useMemo(() => {
     const total = filteredFindings.length;
@@ -224,6 +252,21 @@ export default function Dashboard() {
           </button>
         </div>
       </div>
+
+      {/* Active Coaching Alert */}
+      {activeCoaching && (
+        <div className="glass-card" style={styles.activeAlert}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={styles.alertIcon}><Info size={20} color="#fff" /></div>
+            <div>
+              <div style={{ fontSize: '14px', fontWeight: '800', color: '#fff' }}>PEMBINAAN AKTIF</div>
+              <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.8)' }}>
+                {isAgentRole ? 'Anda' : effectiveAgent} sedang dalam masa pembinaan: <strong>{activeCoaching}</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="dashboard-grid" style={styles.dashboardGrid}>
         <div className="glass-card" style={styles.analyticsCard}>
@@ -438,26 +481,27 @@ export default function Dashboard() {
                 </p>
               </div>
 
-              {/* Follow-up Details */}
-              <div style={{ marginTop: '20px', borderTop: '1px solid var(--border-light)', paddingTop: '16px' }}>
-                <h4 style={styles.secTitle}>Hasil Tindak Lanjut TL:</h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '12px', background: 'rgba(99, 102, 241, 0.05)', padding: '12px', borderRadius: '10px' }}>
-                  <div>
-                    <strong style={{ color: 'var(--primary)' }}>Validasi:</strong>
-                    <p style={{ marginTop: '4px' }}>{selectedAudit.hasilValidasiTL || '-'}</p>
-                  </div>
-                  <div>
-                    <strong style={{ color: 'var(--primary)' }}>Improvement:</strong>
-                    <p style={{ marginTop: '4px' }}>{selectedAudit.improvement || '-'}</p>
-                  </div>
-                  <div>
-                    <strong style={{ color: 'var(--primary)' }}>Pembinaan:</strong>
-                    <div style={{ marginTop: '4px' }}>
-                      {selectedAudit.pembinaan ? <span className="badge badge-primary">{selectedAudit.pembinaan}</span> : <span className="badge badge-warning">Belum Dilakukan</span>}
+              {(selectedAudit.hasilValidasiTL || selectedAudit.improvement || selectedAudit.pembinaan) && (
+                <div style={{ marginTop: '20px', borderTop: '1px solid var(--border-light)', paddingTop: '16px' }}>
+                  <h4 style={styles.secTitle}>Hasil Tindak Lanjut TL:</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '12px', background: 'rgba(99, 102, 241, 0.05)', padding: '12px', borderRadius: '10px' }}>
+                    <div>
+                      <strong style={{ color: 'var(--primary)' }}>Validasi:</strong>
+                      <p style={{ marginTop: '4px' }}>{selectedAudit.hasilValidasiTL || '-'}</p>
+                    </div>
+                    <div>
+                      <strong style={{ color: 'var(--primary)' }}>Improvement:</strong>
+                      <p style={{ marginTop: '4px' }}>{selectedAudit.improvement || '-'}</p>
+                    </div>
+                    <div>
+                      <strong style={{ color: 'var(--primary)' }}>Pembinaan:</strong>
+                      <div style={{ marginTop: '4px' }}>
+                        {selectedAudit.pembinaan ? <span className="badge badge-primary">{selectedAudit.pembinaan}</span> : <span className="badge badge-warning">Belum Dilakukan</span>}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
@@ -487,7 +531,9 @@ const styles = {
   closeBtn: { background: 'none', border: 'none', color: '#fff', fontSize: '24px', cursor: 'pointer' },
   modalMetaGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '12px' },
   secTitle: { fontSize: '13px', fontWeight: '800', marginBottom: '10px', color: 'var(--primary)' },
-  paramGrid: { background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '12px' }
+  paramGrid: { background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '12px' },
+  activeAlert: { background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.2) 0%, rgba(168, 85, 247, 0.1) 100%)', border: '1px solid rgba(255,255,255,0.1)', padding: '16px', marginBottom: '24px', borderRadius: '16px', display: 'flex', alignItems: 'center', gap: '12px', animation: 'glow 2s infinite alternate' },
+  alertIcon: { width: '40px', height: '40px', borderRadius: '12px', background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 15px rgba(99, 102, 241, 0.5)' }
 };
 
 // Responsive Overrides
@@ -497,6 +543,10 @@ if (typeof document !== 'undefined') {
     @media (max-width: 1024px) {
       div[style*="dashboardGrid"] { grid-template-columns: 1fr !important; }
       div[style*="statsGridMini"] { flex-direction: row !important; }
+    }
+    @keyframes glow {
+      from { box-shadow: 0 0 5px rgba(99, 102, 241, 0.2); }
+      to { box-shadow: 0 0 20px rgba(99, 102, 241, 0.4); }
     }
   `;
   document.head.appendChild(style);

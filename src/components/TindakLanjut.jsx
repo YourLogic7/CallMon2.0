@@ -43,10 +43,7 @@ export default function TindakLanjut() {
 
   const filteredFindings = useMemo(() => {
     return findings.filter((audit) => {
-      // Logic: TL can ONLY see findings for their own team
-      // QC and Superadmin can see ALL teams
       if (isTL && audit.teamName !== currentUser.name) return false;
-      
       if (selectedAgent !== 'All' && audit.agentName !== selectedAgent) return false;
       
       if (searchQuery) {
@@ -106,7 +103,11 @@ export default function TindakLanjut() {
 
   const handleSubmitFollowUp = async (e) => {
     e.preventDefault();
-    const res = await updateFinding(selectedAuditId, followUpData);
+    // Add current timestamp as followUpAt
+    const res = await updateFinding(selectedAuditId, {
+      ...followUpData,
+      followUpAt: new Date()
+    });
     if (res.success) {
       alert('Tindak lanjut berhasil disimpan!');
       setIsEditing(false);
