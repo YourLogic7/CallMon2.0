@@ -2,73 +2,52 @@ import { useContext, useState, useMemo } from 'react';
 import { AppContext } from '../context/AppContext';
 import { QM_CATEGORIES } from '../context/qmParameters';
 import { 
-  TrendingUp, 
-  Award, 
   FileText, 
   Filter, 
   Search,
   RefreshCw,
   Eye,
-  Trash2,
-  Clock,
-  Ticket,
-  Calendar,
-  Hash,
-  User,
+  Edit3,
+  CheckCircle,
   AlertTriangle,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  User,
+  Calendar,
+  ClipboardList
 } from 'lucide-react';
 
-export default function Dashboard() {
-  const { findings, currentUser, deleteFinding } = useContext(AppContext);
+export default function TindakLanjut() {
+  const { findings, currentUser, updateFinding } = useContext(AppContext);
 
   const [selectedAgent, setSelectedAgent] = useState('All');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [selectedMonth, setSelectedMonth] = useState('All');
-  const [selectedYear, setSelectedYear] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAuditId, setSelectedAuditId] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
+
+  // Form state for follow-up
+  const [followUpData, setFollowUpData] = useState({
+    hasilValidasiTL: '',
+    improvement: '',
+    pembinaan: ''
+  });
 
   const [sortField, setSortField] = useState('date');
   const [sortDirection, setSortDirection] = useState('desc');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
-  const isAgentRole = currentUser?.role === 'Agent';
-  const canDelete = ['superadmin', 'QC', 'TL'].includes(currentUser?.role);
-  const effectiveAgent = isAgentRole ? currentUser.name : selectedAgent;
-
-  const uniqueAgents = useMemo(() => ['All', ...new Set(findings.map(f => f.agentName))], [findings]);
-  const uniqueYears = useMemo(() => ['All', ...new Set(findings.map(f => {
-    const d = new Date(f.date);
-    return isNaN(d.getTime()) ? 'Unknown' : d.getFullYear().toString();
-  }))].sort(), [findings]);
-
-  const months = [
-    { value: 'All', label: 'Semua Bulan' }, { value: '0', label: 'Jan' }, { value: '1', label: 'Feb' },
-    { value: '2', label: 'Mar' }, { value: '3', label: 'Apr' }, { value: '4', label: 'Mei' },
-    { value: '5', label: 'Jun' }, { value: '6', label: 'Jul' }, { value: '7', label: 'Agu' },
-    { value: '8', label: 'Sep' }, { value: '9', label: 'Okt' }, { value: '10', label: 'Nov' }, { value: '11', label: 'Des' }
-  ];
-
-  const handleResetFilters = () => {
-    setSelectedAgent('All'); setStartDate(''); setEndDate(''); setSelectedMonth('All'); setSelectedYear('All'); setSearchQuery('');
-  };
+  const isTL = currentUser?.role === 'TL';
+  const isQC = currentUser?.role === 'QC';
+  const isSuperadmin = currentUser?.role === 'superadmin';
 
   const filteredFindings = useMemo(() => {
     return findings.filter((audit) => {
-      // Filter by username for Agent role
-      if (isAgentRole && audit.agentUsername !== currentUser.username) return false;
+      // Filter by Team for TL
+      if (isTL && audit.teamName !== currentUser.name) return false;
       
-      if (!isAgentRole && selectedAgent !== 'All' && audit.agentName !== selectedAgent) return false;
-      
-      const auditDate = new Date(audit.date);
-      if (startDate && new Date(startDate) > auditDate) return false;
-      if (endDate && new Date(endDate) < auditDate) return false;
-      if (selectedMonth !== 'All' && auditDate.getMonth().toString() !== selectedMonth) return false;
-      if (selectedYear !== 'All' && auditDate.getFullYear().toString() !== selectedYear) return false;
+      // Filter by Agent name if selected
+      if (selectedAgent !== 'All' && audit.agentName !== selectedAgent) return false;
       
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
@@ -79,26 +58,9 @@ export default function Dashboard() {
       }
       return true;
     });
-  }, [findings, selectedAgent, startDate, endDate, selectedMonth, selectedYear, searchQuery, currentUser, isAgentRole]);
+  }, [findings, selectedAgent, searchQuery, currentUser, isTL]);
 
-  const stats = useMemo(() => {
-    const total = filteredFindings.length;
-    if (total === 0) return { avgScore: 0, totalAudits: 0, topAgent: '-' };
-    const avgScore = Math.round(filteredFindings.reduce((acc, f) => acc + (f.score || 0), 0) / total);
-    const agentScores = {};
-    filteredFindings.forEach(f => {
-      if (!agentScores[f.agentName]) agentScores[f.agentName] = { sum: 0, count: 0 };
-      agentScores[f.agentName].sum += (f.score || 0);
-      agentScores[f.agentName].count += 1;
-    });
-    let topAgentName = '-';
-    let maxAvg = -1;
-    Object.keys(agentScores).forEach(name => {
-      const avg = agentScores[name].sum / agentScores[name].count;
-      if (avg > maxAvg) { maxAvg = avg; topAgentName = name; }
-    });
-    return { avgScore, totalAudits: total, topAgent: topAgentName };
-  }, [filteredFindings]);
+  const uniqueAgents = useMemo(() => ['All', ...new Set(filteredFindings.map(f => f.agentName))], [filteredFindings]);
 
   const selectedAudit = useMemo(() => findings.find(f => (f.id || f._id) === selectedAuditId), [selectedAuditId, findings]);
 
@@ -122,10 +84,34 @@ export default function Dashboard() {
     setCurrentPage(1);
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm('Apakah Anda yakin ingin menghapus data audit ini?')) {
-      const res = await deleteFinding(id);
-      if (!res.success) alert(res.message);
+  const handleViewDetails = (audit) => {
+    setSelectedAuditId(audit.id || audit._id);
+    setFollowUpData({
+      hasilValidasiTL: audit.hasilValidasiTL || '',
+      improvement: audit.improvement || '',
+      pembinaan: audit.pembinaan || ''
+    });
+    setIsEditing(false);
+  };
+
+  const handleEdit = (audit) => {
+    setSelectedAuditId(audit.id || audit._id);
+    setFollowUpData({
+      hasilValidasiTL: audit.hasilValidasiTL || '',
+      improvement: audit.improvement || '',
+      pembinaan: audit.pembinaan || ''
+    });
+    setIsEditing(true);
+  };
+
+  const handleSubmitFollowUp = async (e) => {
+    e.preventDefault();
+    const res = await updateFinding(selectedAuditId, followUpData);
+    if (res.success) {
+      alert('Tindak lanjut berhasil disimpan!');
+      setIsEditing(false);
+    } else {
+      alert('Gagal menyimpan tindak lanjut: ' + res.message);
     }
   };
 
@@ -135,60 +121,42 @@ export default function Dashboard() {
     return <span className="badge badge-danger">{score}%</span>;
   };
 
+  const pembinaanOptions = [
+    '',
+    'Coaching 1', 'Coaching 2', 'Coaching 3',
+    'Konseling 1', 'Konseling 2', 'Konseling 3',
+    'BATL 1', 'BATL 2', 'BATL 3',
+    'SP 1', 'SP 2', 'SP 3'
+  ];
+
   return (
     <div className="main-content">
       <div className="header-row" style={styles.headerRow}>
         <div style={{ flex: 1 }}>
-          <h2 style={styles.title}>QM Performance</h2>
-          <p style={styles.subtitle}>Ringkasan performa audit agent.</p>
-        </div>
-        <button onClick={handleResetFilters} className="btn-primary" style={styles.resetBtn}>
-          <RefreshCw size={14} /> Reset
-        </button>
-      </div>
-
-      {/* KPI Cards */}
-      <div className="stats-grid" style={styles.statsGrid}>
-        <div className="glass-card stat-card" style={styles.statCard}>
-          <div style={styles.statHeader}><span>Rata-rata QMS</span><TrendingUp size={16} color="var(--primary)" /></div>
-          <div style={styles.statValue}>{stats.avgScore}%</div>
-        </div>
-        <div className="glass-card stat-card" style={styles.statCard}>
-          <div style={styles.statHeader}><span>Total Audit</span><FileText size={16} color="var(--secondary)" /></div>
-          <div style={styles.statValue}>{stats.totalAudits}</div>
-        </div>
-        <div className="glass-card stat-card" style={styles.statCard}>
-          <div style={styles.statHeader}><span>Top Agent</span><Award size={16} color="var(--success)" /></div>
-          <div style={{ ...styles.statValue, fontSize: '14px', fontWeight: 'bold', marginTop: '10px' }}>{stats.topAgent}</div>
+          <h2 style={styles.title}>Tindak Lanjut Finding</h2>
+          <p style={styles.subtitle}>Kelola dan tindak lanjuti temuan audit agent.</p>
         </div>
       </div>
 
-      {!isAgentRole && (
-        <div className="glass-card filter-card" style={styles.filterCard}>
-          <div style={styles.cardHeader}><Filter size={16} /><span>Filter Pemantauan</span></div>
-          <div className="filter-grid" style={styles.filterGrid}>
-            <div className="form-group">
-              <label className="form-label">Agent</label>
-              <select className="form-input" value={effectiveAgent} onChange={(e) => setSelectedAgent(e.target.value)} disabled={isAgentRole}>
-                {uniqueAgents.map(a => <option key={a} value={a}>{a === 'All' ? 'Semua Agent' : a}</option>)}
-              </select>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Bulan</label>
-              <select className="form-input" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)}>
-                {months.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-              </select>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Search</label>
-              <div style={{ position: 'relative' }}>
-                <Search size={14} style={{ position: 'absolute', left: '10px', top: '12px', color: 'var(--text-muted)' }} />
-                <input type="text" className="form-input" style={{ paddingLeft: '32px' }} placeholder="ID, Agent, MSISDN..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-              </div>
+      {/* Filter Card */}
+      <div className="glass-card filter-card" style={styles.filterCard}>
+        <div style={styles.cardHeader}><Filter size={16} /><span>Filter Temuan</span></div>
+        <div className="filter-grid" style={styles.filterGrid}>
+          <div className="form-group">
+            <label className="form-label">Agent</label>
+            <select className="form-input" value={selectedAgent} onChange={(e) => setSelectedAgent(e.target.value)}>
+              {uniqueAgents.map(a => <option key={a} value={a}>{a === 'All' ? 'Semua Agent' : a}</option>)}
+            </select>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Search</label>
+            <div style={{ position: 'relative' }}>
+              <Search size={14} style={{ position: 'absolute', left: '10px', top: '12px', color: 'var(--text-muted)' }} />
+              <input type="text" className="form-input" style={{ paddingLeft: '32px' }} placeholder="ID, Agent, MSISDN..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
             </div>
           </div>
         </div>
-      )}
+      </div>
 
       {/* Table Card */}
       <div className="glass-card table-card" style={{ marginTop: '24px' }}>
@@ -200,11 +168,12 @@ export default function Dashboard() {
                 <th onClick={() => handleSort('date')} style={{ cursor: 'pointer' }}>Tanggal</th>
                 <th onClick={() => handleSort('agentName')} style={{ cursor: 'pointer' }}>Agent</th>
                 <th>Skor</th>
+                <th>Status</th>
                 <th>Aksi</th>
               </tr>
             </thead>
             <tbody>
-              {paginatedFindings.length === 0 ? <tr><td colSpan="5" style={{ textAlign: 'center', padding: '40px' }}>Tidak ada data audit.</td></tr> : (
+              {paginatedFindings.length === 0 ? <tr><td colSpan="6" style={{ textAlign: 'center', padding: '40px' }}>Tidak ada data temuan.</td></tr> : (
                 paginatedFindings.map(audit => (
                   <tr key={audit.id || audit._id}>
                     <td>{(audit.id || audit._id || '').toString().slice(-6)}</td>
@@ -212,11 +181,16 @@ export default function Dashboard() {
                     <td style={{ fontWeight: '600' }}>{audit.agentName}</td>
                     <td>{getScoreBadge(audit.score)}</td>
                     <td>
+                      {audit.pembinaan ? (
+                        <span className="badge badge-success" style={{ fontSize: '10px' }}>Selesai</span>
+                      ) : (
+                        <span className="badge badge-warning" style={{ fontSize: '10px' }}>Pending</span>
+                      )}
+                    </td>
+                    <td>
                       <div style={{ display: 'flex', gap: '8px' }}>
-                        <button onClick={() => setSelectedAuditId(audit.id || audit._id)} className="btn-primary" style={{ padding: '6px 10px', fontSize: '12px' }}><Eye size={12} /></button>
-                        {canDelete && (
-                          <button onClick={() => handleDelete(audit.id || audit._id)} className="btn-primary" style={{ padding: '6px 10px', fontSize: '12px', background: 'var(--danger)' }}><Trash2 size={12} /></button>
-                        )}
+                        <button onClick={() => handleViewDetails(audit)} className="btn-primary" style={{ padding: '6px 10px', fontSize: '12px' }} title="Lihat Detail"><Eye size={12} /></button>
+                        <button onClick={() => handleEdit(audit)} className="btn-primary" style={{ padding: '6px 10px', fontSize: '12px', background: 'var(--secondary)' }} title="Tindak Lanjut"><Edit3 size={12} /></button>
                       </div>
                     </td>
                   </tr>
@@ -232,15 +206,17 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Audit Detail Modal */}
+      {/* Modal Detail / Edit */}
       {selectedAudit && (
         <div style={styles.modalOverlay} onClick={() => setSelectedAuditId(null)}>
           <div className="glass-card modal-card" style={styles.modalCard} onClick={e => e.stopPropagation()}>
             <div style={styles.modalHeader}>
-              <h3 style={{ fontSize: '16px', fontWeight: '800' }}>Audit Detail: {(selectedAudit.id || selectedAudit._id || '').toString()}</h3>
+              <h3 style={{ fontSize: '16px', fontWeight: '800' }}>{isEditing ? 'Tindak Lanjut' : 'Detail Finding'}: {(selectedAudit.id || selectedAudit._id || '').toString()}</h3>
               <button onClick={() => setSelectedAuditId(null)} style={styles.closeBtn}>&times;</button>
             </div>
+            
             <div style={styles.modalBody}>
+              {/* Common Details (from Dashboard) */}
               <div className="modal-meta-grid" style={styles.modalMetaGrid}>
                 <div className="meta-item"><strong>Agent:</strong> {selectedAudit.agentName}</div>
                 <div className="meta-item"><strong>Score:</strong> {selectedAudit.score}%</div>
@@ -289,28 +265,71 @@ export default function Dashboard() {
                 </p>
               </div>
 
-              {/* TL Follow-up Results */}
-              {(selectedAudit.hasilValidasiTL || selectedAudit.improvement || selectedAudit.pembinaan) && (
-                <div style={{ marginTop: '20px', borderTop: '1px solid var(--border-light)', paddingTop: '16px' }}>
-                  <h4 style={styles.secTitle}>Hasil Tindak Lanjut TL:</h4>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '12px', background: 'rgba(99, 102, 241, 0.05)', padding: '12px', borderRadius: '10px' }}>
-                    <div>
-                      <strong style={{ color: 'var(--primary)' }}>Validasi:</strong>
-                      <p style={{ marginTop: '4px' }}>{selectedAudit.hasilValidasiTL || '-'}</p>
+              {/* Follow-up Form */}
+              <div style={{ marginTop: '24px', borderTop: '1px solid var(--border-light)', paddingTop: '20px' }}>
+                <h4 style={{ ...styles.secTitle, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <ClipboardList size={16} /> Form Tindak Lanjut TL
+                </h4>
+                
+                {isEditing ? (
+                  <form onSubmit={handleSubmitFollowUp} style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '12px' }}>
+                    <div className="form-group">
+                      <label className="form-label">Hasil Validasi TL</label>
+                      <textarea 
+                        className="form-input" 
+                        rows="3" 
+                        value={followUpData.hasilValidasiTL}
+                        onChange={e => setFollowUpData({...followUpData, hasilValidasiTL: e.target.value})}
+                        placeholder="Masukkan hasil validasi..."
+                        required
+                      />
                     </div>
-                    <div>
-                      <strong style={{ color: 'var(--primary)' }}>Improvement:</strong>
-                      <p style={{ marginTop: '4px' }}>{selectedAudit.improvement || '-'}</p>
+                    <div className="form-group">
+                      <label className="form-label">Improvement</label>
+                      <textarea 
+                        className="form-input" 
+                        rows="3" 
+                        value={followUpData.improvement}
+                        onChange={e => setFollowUpData({...followUpData, improvement: e.target.value})}
+                        placeholder="Rencana perbaikan..."
+                        required
+                      />
                     </div>
-                    <div>
-                      <strong style={{ color: 'var(--primary)' }}>Pembinaan:</strong>
-                      <div style={{ marginTop: '4px' }}>
-                        {selectedAudit.pembinaan ? <span className="badge badge-primary">{selectedAudit.pembinaan}</span> : '-'}
-                      </div>
+                    <div className="form-group">
+                      <label className="form-label">Pembinaan</label>
+                      <select 
+                        className="form-input" 
+                        value={followUpData.pembinaan}
+                        onChange={e => setFollowUpData({...followUpData, pembinaan: e.target.value})}
+                        required
+                      >
+                        <option value="" disabled>Pilih Jenis Pembinaan</option>
+                        {pembinaanOptions.filter(o => o !== '').map(opt => (
+                          <option key={opt} value={opt}>{opt}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <button type="submit" className="btn-primary" style={{ marginTop: '10px' }}>
+                      <CheckCircle size={16} style={{ marginRight: '8px' }} /> Simpan Tindak Lanjut
+                    </button>
+                  </form>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
+                    <div style={styles.followUpViewItem}>
+                      <strong>Hasil Validasi TL:</strong>
+                      <p>{selectedAudit.hasilValidasiTL || '-'}</p>
+                    </div>
+                    <div style={styles.followUpViewItem}>
+                      <strong>Improvement:</strong>
+                      <p>{selectedAudit.improvement || '-'}</p>
+                    </div>
+                    <div style={styles.followUpViewItem}>
+                      <strong>Pembinaan:</strong>
+                      <p>{selectedAudit.pembinaan ? <span className="badge badge-primary">{selectedAudit.pembinaan}</span> : '-'}</p>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -323,11 +342,6 @@ const styles = {
   headerRow: { display: 'flex', alignItems: 'center', marginBottom: '24px', gap: '16px', flexWrap: 'wrap' },
   title: { fontSize: '22px', fontWeight: '800' },
   subtitle: { fontSize: '13px', color: 'var(--text-muted)' },
-  resetBtn: { padding: '8px 16px', fontSize: '13px' },
-  statsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '16px', marginBottom: '24px' },
-  statCard: { padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px' },
-  statHeader: { display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-muted)', fontWeight: '600' },
-  statValue: { fontSize: '24px', fontWeight: '800' },
   filterCard: { padding: '16px' },
   cardHeader: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', fontSize: '14px', fontWeight: '700' },
   filterGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' },
@@ -338,5 +352,6 @@ const styles = {
   closeBtn: { background: 'none', border: 'none', color: '#fff', fontSize: '24px', cursor: 'pointer' },
   modalMetaGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '12px' },
   secTitle: { fontSize: '13px', fontWeight: '800', marginBottom: '10px', color: 'var(--primary)' },
-  paramGrid: { background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '12px' }
+  paramGrid: { background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '12px' },
+  followUpViewItem: { fontSize: '12px', color: 'var(--text-muted)' }
 };

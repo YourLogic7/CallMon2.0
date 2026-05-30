@@ -15,7 +15,8 @@ import {
   Users,
   UserCog,
   Settings,
-  ChevronDown
+  ChevronDown,
+  ClipboardList
 } from 'lucide-react';
 
 export default function Sidebar() {
@@ -66,7 +67,8 @@ export default function Sidebar() {
   if (!currentUser) return null;
 
   const canManageSdm = ['superadmin', 'QC', 'TL'].includes(currentUser.role);
-  const canInputFinding = ['superadmin', 'QC', 'TL'].includes(currentUser.role);
+  const canInputFinding = ['superadmin', 'QC'].includes(currentUser.role);
+  const canTindakLanjut = ['superadmin', 'QC', 'TL'].includes(currentUser.role);
 
   return (
     <>
@@ -132,6 +134,13 @@ export default function Sidebar() {
             <NavLink to="/input-finding" onClick={() => setIsMobileOpen(false)} style={({ isActive }) => ({ ...styles.navLink, ...(isActive ? styles.activeNavLink : {}), justifyContent: isCollapsed ? 'center' : 'flex-start' })}>
               <PlusCircle size={20} />
               {!isCollapsed && <span>Input Finding</span>}
+            </NavLink>
+          )}
+
+          {canTindakLanjut && (
+            <NavLink to="/tindak-lanjut" onClick={() => setIsMobileOpen(false)} style={({ isActive }) => ({ ...styles.navLink, ...(isActive ? styles.activeNavLink : {}), justifyContent: isCollapsed ? 'center' : 'flex-start' })}>
+              <ClipboardList size={20} />
+              {!isCollapsed && <span>Tindak Lanjut</span>}
             </NavLink>
           )}
 

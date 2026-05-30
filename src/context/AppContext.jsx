@@ -190,6 +190,17 @@ export const AppContextProvider = ({ children }) => {
     }
   };
 
+  const updateFinding = async (id, updateData) => {
+    try {
+      const res = await api.put(`/findings/${id}`, updateData);
+      setFindings(prev => prev.map(f => (f.id || f._id) === id ? res.data : f));
+      return { success: true, data: res.data };
+    } catch (err) {
+      console.error('Error updating finding:', err);
+      return { success: false, message: err.response?.data?.message || 'Failed to update finding' };
+    }
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -204,6 +215,7 @@ export const AppContextProvider = ({ children }) => {
         logout,
         addFinding,
         deleteFinding,
+        updateFinding,
         addTeamLeader,
         deleteTeamLeader,
         addSDM,

@@ -5,6 +5,10 @@ const FindingSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  agentUsername: {
+    type: String,
+    required: true
+  },
   auditorName: {
     type: String,
     required: true
@@ -36,6 +40,12 @@ const FindingSchema = new mongoose.Schema({
   duration: String,
   callDate: String,
   callTime: String,
+  
+  // Follow-up fields
+  teamName: String,
+  hasilValidasiTL: String,
+  improvement: String,
+  pembinaan: String,
   
   // Backward compatibility fields
   evaluatorName: String,

@@ -9,6 +9,7 @@ import Dashboard from './pages/Dashboard';
 import InputFinding from './pages/InputFinding';
 import AccountMgmt from './pages/AccountMgmt';
 import TeamMgmt from './pages/TeamMgmt';
+import TindakLanjut from './pages/TindakLanjut';
 
 // Protect routes that require authentication
 const ProtectedRoute = () => {
@@ -56,6 +57,16 @@ const PublicRoute = () => {
   return !currentUser ? <Outlet /> : <Navigate to="/dashboard" replace />;
 };
 
+// Role-based access control
+const RoleProtectedRoute = ({ allowedRoles }) => {
+  const { currentUser } = useContext(AppContext);
+  
+  if (!currentUser) return <Navigate to="/login" replace />;
+  if (!allowedRoles.includes(currentUser.role)) return <Navigate to="/dashboard" replace />;
+  
+  return <Outlet />;
+};
+
 // Main App Component
 const App = () => {
   return (
@@ -73,9 +84,20 @@ const App = () => {
             <Route path="/" element={<MainLayout />}>
               <Route index element={<Navigate to="/dashboard" replace />} />
               <Route path="dashboard" element={<Dashboard />} />
-              <Route path="input-finding" element={<InputFinding />} />
-              <Route path="account-mgmt" element={<AccountMgmt />} />
-              <Route path="team-mgmt" element={<TeamMgmt />} />
+              
+              {/* Restricted routes */}
+              <Route element={<RoleProtectedRoute allowedRoles={['superadmin', 'QC']} />}>
+                <Route path="input-finding" element={<InputFinding />} />
+              </Route>
+              
+              <Route element={<RoleProtectedRoute allowedRoles={['superadmin', 'QC', 'TL']} />}>
+                <Route path="tindak-lanjut" element={<TindakLanjut />} />
+              </Route>
+
+              <Route element={<RoleProtectedRoute allowedRoles={['superadmin']} />}>
+                <Route path="account-mgmt" element={<AccountMgmt />} />
+                <Route path="team-mgmt" element={<TeamMgmt />} />
+              </Route>
             </Route>
           </Route>
 

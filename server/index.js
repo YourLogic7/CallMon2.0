@@ -141,7 +141,27 @@ app.get('/api/findings', async (req, res) => {
 
 app.post('/api/findings', async (req, res) => {
   try {
-    const finding = new Finding(req.body);
+    const findingData = req.body;
+    
+    // Auto-populate teamName and agentUsername from SDM record
+    if (findingData.agentName) {
+      const sdm = await SDM.findOne({ name: findingData.agentName });
+      if (sdm) {
+        if (!findingData.teamName) findingData.teamName = sdm.teamName;
+        if (!findingData.agentUsername) {
+          // Find user by name to get username
+          const user = await User.findOne({ name: findingData.agentName, role: 'Agent' });
+          if (user) {
+            findingData.agentUsername = user.username;
+          } else {
+            // Fallback or handle case where user doesn't exist
+            findingData.agentUsername = sdm.nik; // Or some other identifier
+          }
+        }
+      }
+    }
+
+    const finding = new Finding(findingData);
     await finding.save();
     const obj = finding.toObject();
     obj.id = finding._id.toString();
@@ -149,6 +169,25 @@ app.post('/api/findings', async (req, res) => {
   } catch (error) {
     console.error('[POST FINDING ERROR]', error);
     res.status(500).json({ message: error.message || 'Failed to save finding' });
+  }
+});
+
+app.put('/api/findings/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
+    
+    const updatedFinding = await Finding.findByIdAndUpdate(id, updateData, { new: true });
+    if (!updatedFinding) {
+      return res.status(404).json({ message: 'Finding not found' });
+    }
+    
+    const obj = updatedFinding.toObject();
+    obj.id = updatedFinding._id.toString();
+    res.json(obj);
+  } catch (error) {
+    console.error('[PUT FINDING ERROR]', error);
+    res.status(500).json({ message: 'Failed to update finding' });
   }
 });
 
