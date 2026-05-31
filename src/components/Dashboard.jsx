@@ -196,6 +196,7 @@ export default function Dashboard() {
         Tanggal: f.date,
         Week: f.week || '-',
         Agent: f.agentName,
+        Username: f.agentUsername || '-',
         Score: f.score,
         Auditor: f.auditorName,
         Role: f.auditorRole,
